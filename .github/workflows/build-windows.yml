@@ -130,6 +130,7 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ env.RELEASE_TAG }}
+        overwrite: true
         name: Amulet ${{ env.BUILD_VERSION }}
         prerelease: ${{ env.IS_RELEASE == 'false' }}
         files: |
