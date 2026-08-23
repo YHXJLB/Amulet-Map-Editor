@@ -3,7 +3,7 @@
 # 如需在未来恢复 macOS 构建，将下面 `on: []` 改为对应触发配置并补充 Apple 签名相关 secrets 即可。
 on: []
 
-name: Build macOS (archived)
+name: Build macOS
 
 permissions:
   contents: write
