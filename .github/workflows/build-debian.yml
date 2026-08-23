@@ -78,9 +78,13 @@ jobs:
         pip install https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/wxpython-4.2.5-cp311-cp311-linux_x86_64.whl
 
     - name: Setup
+      # python -m build 默认用隔离环境，隔离环境里没装 wxPython wheel，
+      # BDISTWHEELFREEZELIBS=true 触发 pip install 安装 first-party 包时会顺带安装 wxPython，
+      # 导致从源码编译 wxPython 失败。改用 --no-isolation 在当前环境（已装 wxPython wheel）构建。
       run: |
+        pip install setuptools cython versioneer "numpy~=1.17"
         export BDISTWHEELFREEZELIBS=true
-        python -m build
+        python -m build --no-isolation
         python -m pip install dist/amulet_map_editor-*.whl --upgrade
 
     - name: PyInstaller build
