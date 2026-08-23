@@ -3,6 +3,10 @@ name: Build Windows
 on:
   release:
     types: [published]
+  workflow_dispatch:
+  push:
+    branches:
+      - 0.10
 
 jobs:
   deploy:
@@ -17,6 +21,9 @@ jobs:
     defaults:
       run:
         shell: bash
+
+    env:
+      BUILD_VERSION: ${{ github.event.release.tag_name || format('0.10.{0}', github.run_number) }}
 
     steps:
     - name: Clone
@@ -58,11 +65,23 @@ jobs:
         nsis-version: '3.11'
 
     - name: Windows - Sign and Create Installer
+      env:
+        KEY_VAULT_URL: ${{ secrets.KEY_VAULT_URL }}
+        KEY_VAULT_CERTIFICATE: ${{ secrets.KEY_VAULT_CERTIFICATE }}
+        KEY_VAULT_CLIENT_ID: ${{ secrets.KEY_VAULT_CLIENT_ID }}
+        KEY_VAULT_SECRET: ${{ secrets.KEY_VAULT_SECRET }}
+        KEY_VAULT_TENANT: ${{ secrets.KEY_VAULT_TENANT }}
       run: |
         curl -L -o azuresigntool.exe https://github.com/vcsjones/AzureSignTool/releases/download/v7.0.1/AzureSignTool-${{ matrix.cfg.architecture }}.exe
-        find ./installer/dist/amulet -type f \( -name "*.exe" -o -name "*.dll" -o -name "*.pyd" \) -exec ./azuresigntool.exe sign -kvu "${{ secrets.KEY_VAULT_URL }}" -kvc "${{ secrets.KEY_VAULT_CERTIFICATE }}" -kvi "${{ secrets.KEY_VAULT_CLIENT_ID }}" -kvs "${{ secrets.KEY_VAULT_SECRET }}" -kvt "${{ secrets.KEY_VAULT_TENANT }}" -tr http://timestamp.digicert.com -v "{}" \;
-        makensis -DVERSION=${{ github.event.release.tag_name }} -DARCH=${{ matrix.cfg.architecture }} installer/windows.nsi
-        ./azuresigntool.exe sign -kvu "${{ secrets.KEY_VAULT_URL }}" -kvc "${{ secrets.KEY_VAULT_CERTIFICATE }}" -kvi "${{ secrets.KEY_VAULT_CLIENT_ID }}" -kvs "${{ secrets.KEY_VAULT_SECRET }}" -kvt "${{ secrets.KEY_VAULT_TENANT }}" -tr http://timestamp.digicert.com -v "./installer/dist/Amulet-${{ github.event.release.tag_name }}-Windows-${{ matrix.cfg.architecture }}.exe"
+        if [ -n "$KEY_VAULT_URL" ]; then
+          find ./installer/dist/amulet -type f \( -name "*.exe" -o -name "*.dll" -o -name "*.pyd" \) -exec ./azuresigntool.exe sign -kvu "$KEY_VAULT_URL" -kvc "$KEY_VAULT_CERTIFICATE" -kvi "$KEY_VAULT_CLIENT_ID" -kvs "$KEY_VAULT_SECRET" -kvt "$KEY_VAULT_TENANT" -tr http://timestamp.digicert.com -v "{}" \;
+        else
+          echo "No signing secrets configured. Skipping code signing."
+        fi
+        makensis -DVERSION=$BUILD_VERSION -DARCH=${{ matrix.cfg.architecture }} installer/windows.nsi
+        if [ -n "$KEY_VAULT_URL" ]; then
+          ./azuresigntool.exe sign -kvu "$KEY_VAULT_URL" -kvc "$KEY_VAULT_CERTIFICATE" -kvi "$KEY_VAULT_CLIENT_ID" -kvs "$KEY_VAULT_SECRET" -kvt "$KEY_VAULT_TENANT" -tr http://timestamp.digicert.com -v "./installer/dist/Amulet-$BUILD_VERSION-Windows-${{ matrix.cfg.architecture }}.exe"
+        fi
         rm -rf installer/dist/amulet
 
     - name: Publish to PyPi
@@ -70,10 +89,14 @@ jobs:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.AMULET_MAP_EDITOR_PYPI_PASSWORD }}
       run: |
-        twine upload dist/amulet[_-]map[_-]editor*.tar.gz --skip-existing
+        if [ -n "$TWINE_PASSWORD" ]; then
+          twine upload dist/amulet[_-]map[_-]editor*.tar.gz --skip-existing
+        else
+          echo "PyPI secrets not configured. Skipping publish."
+        fi
 
     - name: Upload Release Asset
       uses: actions/upload-artifact@v6
       with:
-        name: Amulet-${{ github.event.release.tag_name }}-${{ runner.os }}-${{ matrix.cfg.architecture }}
+        name: Amulet-$BUILD_VERSION-${{ runner.os }}-${{ matrix.cfg.architecture }}
         path: ./installer/dist
