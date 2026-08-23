@@ -3,6 +3,13 @@ name: Build macOS
 on:
   release:
     types: [published]
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
   deploy:
@@ -21,8 +28,23 @@ jobs:
     steps:
     - name: Clone
       uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
 
-    - name: Set up Python ${{ matrix.cfg.python-version }}
+    - name: Compute version & release target
+      run: |
+        if [ "${{ github.event_name }}" = "release" ]; then
+          echo "RELEASE_TAG=${{ env.RELEASE_TAG }}" >> "$GITHUB_ENV"
+          echo "IS_RELEASE=true" >> "$GITHUB_ENV"
+        elif [ "${{ github.ref_type }}" = "tag" ]; then
+          echo "RELEASE_TAG=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          echo "IS_RELEASE=true" >> "$GITHUB_ENV"
+        else
+          echo "RELEASE_TAG=ci-${{ github.run_id }}" >> "$GITHUB_ENV"
+          echo "IS_RELEASE=false" >> "$GITHUB_ENV"
+        fi
+
+    - name: Set up Python ${{ matrix.cfg.python-version }}"
       uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.cfg.python-version }}
@@ -74,32 +96,32 @@ jobs:
       run: |
         brew install create-dmg
         mkdir -p "installer/dist/dmg"
-        ditto "installer/dist/Amulet ${{ github.event.release.tag_name }}.app" "installer/dist/dmg/Amulet ${{ github.event.release.tag_name }}.app"
-        codesign --verify --deep --strict "installer/dist/dmg/Amulet ${{ github.event.release.tag_name }}.app"
+        ditto "installer/dist/Amulet ${{ env.RELEASE_TAG }}.app" "installer/dist/dmg/Amulet ${{ env.RELEASE_TAG }}.app"
+        codesign --verify --deep --strict "installer/dist/dmg/Amulet ${{ env.RELEASE_TAG }}.app"
         create-dmg \
-          --volname "Amulet ${{ github.event.release.tag_name }} installer" \
+          --volname "Amulet ${{ env.RELEASE_TAG }} installer" \
           --volicon "installer/logo.icns" \
           --window-pos 200 120 \
           --window-size 600 300 \
           --icon-size 100 \
-          --icon "Amulet ${{ github.event.release.tag_name }}.app" 175 120 \
-          --hide-extension "Amulet ${{ github.event.release.tag_name }}.app" \
+          --icon "Amulet ${{ env.RELEASE_TAG }}.app" 175 120 \
+          --hide-extension "Amulet ${{ env.RELEASE_TAG }}.app" \
           --app-drop-link 425 120 \
-          "installer/dist/Amulet-${{ github.event.release.tag_name }}-macOS-${{ matrix.cfg.architecture }}.dmg" \
+          "installer/dist/Amulet-${{ env.RELEASE_TAG }}-macOS-${{ matrix.cfg.architecture }}.dmg" \
           "installer/dist/dmg"
-        rm -rf "installer/dist/Amulet ${{ github.event.release.tag_name }}.app"
+        rm -rf "installer/dist/Amulet ${{ env.RELEASE_TAG }}.app"
         rm -rf installer/dist/amulet
         rm -rf installer/dist/dmg
 
     - name: MacOS - Notarise DMG
       run: |
         xcrun notarytool submit \
-          "installer/dist/Amulet-${{ github.event.release.tag_name }}-macOS-${{ matrix.cfg.architecture }}.dmg" \
+          "installer/dist/Amulet-${{ env.RELEASE_TAG }}-macOS-${{ matrix.cfg.architecture }}.dmg" \
           --keychain-profile "notary-profile" \
           --team-id "${{ secrets.APPLE_TEAM_ID }}" \
           --wait
         xcrun stapler staple \
-          "installer/dist/Amulet-${{ github.event.release.tag_name }}-macOS-${{ matrix.cfg.architecture }}.dmg"
+          "installer/dist/Amulet-${{ env.RELEASE_TAG }}-macOS-${{ matrix.cfg.architecture }}.dmg"
 
     - name: Publish to PyPi
       env:
@@ -111,5 +133,13 @@ jobs:
     - name: Upload Release Asset
       uses: actions/upload-artifact@v6
       with:
-        name: Amulet-${{ github.event.release.tag_name }}-${{ runner.os }}-${{ matrix.cfg.architecture }}
+        name: Amulet-${{ env.RELEASE_TAG }}-${{ runner.os }}-${{ matrix.cfg.architecture }}
         path: ./installer/dist
+
+    - name: Publish to GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ env.RELEASE_TAG }}
+        name: Amulet ${{ env.RELEASE_TAG }}
+        prerelease: ${{ env.IS_RELEASE == 'false' }}
+        files: installer/dist/Amulet-*.dmg

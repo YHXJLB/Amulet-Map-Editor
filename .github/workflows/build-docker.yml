@@ -3,6 +3,13 @@ name: Build Docker
 on:
   release:
     types: [published]
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -11,6 +18,21 @@ jobs:
     steps:
     - name: Checkout repo
       uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Compute version & release target
+      run: |
+        if [ "${{ github.event_name }}" = "release" ]; then
+          echo "RELEASE_TAG=${{ github.event.release.tag_name }}" >> "$GITHUB_ENV"
+          echo "IS_RELEASE=true" >> "$GITHUB_ENV"
+        elif [ "${{ github.ref_type }}" = "tag" ]; then
+          echo "RELEASE_TAG=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          echo "IS_RELEASE=true" >> "$GITHUB_ENV"
+        else
+          echo "RELEASE_TAG=ci-${{ github.run_id }}" >> "$GITHUB_ENV"
+          echo "IS_RELEASE=false" >> "$GITHUB_ENV"
+        fi
 
     - name: Build Docker image
       run: |
@@ -18,14 +40,22 @@ jobs:
           . \
           --file Dockerfile \
           --tag amulet-editor:latest \
-          --build-arg AMULET_VERSION=CUSTOM:git+https://github.com/${{ github.repository }}.git@${{ github.event.release.tag_name }}
+          --build-arg AMULET_VERSION=CUSTOM:git+https://github.com/${{ github.repository }}.git@${{ env.RELEASE_TAG }}
 
     - name: Save and compress Docker image
       run: |
-        docker save amulet-editor:latest | xz -9e > Amulet-${{ github.event.release.tag_name }}-docker.tar.gz
+        docker save amulet-editor:latest | xz -9e > Amulet-${{ env.RELEASE_TAG }}-docker.tar.gz
 
     - name: Upload Release Asset
       uses: actions/upload-artifact@v6
       with:
-        name: Amulet-${{ github.event.release.tag_name }}-docker.tar.gz
-        path: Amulet-${{ github.event.release.tag_name }}-docker.tar.gz
+        name: Amulet-${{ env.RELEASE_TAG }}-docker.tar.gz
+        path: Amulet-${{ env.RELEASE_TAG }}-docker.tar.gz
+
+    - name: Publish to GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ env.RELEASE_TAG }}
+        name: Amulet ${{ env.RELEASE_TAG }}
+        prerelease: ${{ env.IS_RELEASE == 'false' }}
+        files: Amulet-${{ env.RELEASE_TAG }}-docker.tar.gz

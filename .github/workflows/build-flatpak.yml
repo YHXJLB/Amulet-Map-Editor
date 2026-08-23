@@ -3,6 +3,13 @@ name: Build Flatpak
 on:
   release:
     types: [published]
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
   deploy:
@@ -20,8 +27,23 @@ jobs:
     steps:
     - name: Clone
       uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
 
-    - name: Set up Python ${{ matrix.cfg.python-version }}
+    - name: Compute version & release target
+      run: |
+        if [ "${{ github.event_name }}" = "release" ]; then
+          echo "RELEASE_TAG=${{ github.event.release.tag_name }}" >> "$GITHUB_ENV"
+          echo "IS_RELEASE=true" >> "$GITHUB_ENV"
+        elif [ "${{ github.ref_type }}" = "tag" ]; then
+          echo "RELEASE_TAG=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          echo "IS_RELEASE=true" >> "$GITHUB_ENV"
+        else
+          echo "RELEASE_TAG=ci-${{ github.run_id }}" >> "$GITHUB_ENV"
+          echo "IS_RELEASE=false" >> "$GITHUB_ENV"
+        fi
+
+    - name: Set up Python ${{ matrix.cfg.python-version }}"
       uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.cfg.python-version }}
@@ -42,14 +64,14 @@ jobs:
         sudo apt-get install -y flatpak-builder        
         flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
-        TAG="${{ github.event.release.tag_name }}"
+        TAG="${{ env.RELEASE_TAG }}"
         TAG="${TAG//./_}"
         
         # Create desktop file
         cat << EOF > installer/com.amuletmc.amulet_map_editor_${TAG}.desktop
         [Desktop Entry]
         Type=Application
-        Name=Amulet ${{ github.event.release.tag_name }}
+        Name=Amulet ${{ env.RELEASE_TAG }}
         Comment=A Minecraft world editor and converter that supports all versions since Java 1.12 and Bedrock 1.7.
         Exec=amulet_map_editor
         Icon=com.amuletmc.amulet_map_editor_${TAG}
@@ -59,10 +81,18 @@ jobs:
 
         flatpak-builder --force-clean --user --install-deps-from=flathub --repo=repo --install builddir installer/com.amuletmc.amulet_map_editor_${TAG}.yml
         mkdir -p installer/dist
-        flatpak build-bundle repo installer/dist/Amulet-${{ github.event.release.tag_name }}-flatpak-${{ matrix.cfg.architecture }}.flatpak com.amuletmc.amulet_map_editor_${TAG} --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo
+        flatpak build-bundle repo installer/dist/Amulet-${{ env.RELEASE_TAG }}-flatpak-${{ matrix.cfg.architecture }}.flatpak com.amuletmc.amulet_map_editor_${TAG} --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo
 
     - name: Upload Release Asset
       uses: actions/upload-artifact@v6
       with:
-        name: Amulet-${{ github.event.release.tag_name }}-flatpak-${{ matrix.cfg.architecture }}
+        name: Amulet-${{ env.RELEASE_TAG }}-flatpak-${{ matrix.cfg.architecture }}
         path: ./installer/dist
+
+    - name: Publish to GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ env.RELEASE_TAG }}
+        name: Amulet ${{ env.RELEASE_TAG }}
+        prerelease: ${{ env.IS_RELEASE == 'false' }}
+        files: installer/dist/Amulet-*.flatpak

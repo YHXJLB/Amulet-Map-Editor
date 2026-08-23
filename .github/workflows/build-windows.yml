@@ -78,9 +78,21 @@ jobs:
       run: |
         python -m PyInstaller -y --distpath ./installer/dist installer/Amulet.spec
 
+    - name: Windows - Install NSIS
+      uses: repolevedavaj/install-nsis@v1.2.0
+      with:
+        nsis-version: '3.11'
+
+    - name: Windows - Build NSIS installer
+      # 安装版 exe：makensis 从 installer/ 目录执行，输入 dist/amulet/，输出 dist/Amulet-<version>-Windows-<arch>.exe
+      run: |
+        cd installer
+        makensis /DVERSION="$BUILD_VERSION" /DARCH="${{ matrix.cfg.architecture }}" windows.nsi
+        cd ..
+        mv "installer/dist/Amulet-$BUILD_VERSION-Windows-${{ matrix.cfg.architecture }}.exe" "installer/dist/Amulet-v$BUILD_VERSION-Windows-${{ matrix.cfg.architecture }}-installer.exe"
+
     - name: Package portable build (zip)
-      # 与官方 0.10.44 产物结构一致：PyInstaller 单文件夹包 -> 压缩为 Amulet-v<版本>-Windows-<arch>.zip
-      # 注意：zip 根目录应为 Amulet/ 文件夹（而非把 amulet 里的内容散在根目录）。
+      # 免安装版 zip：zip 根目录为 Amulet/ 文件夹，与 0.10.44 外层结构一致。
       # PyInstaller 6.x 的 contents_directory="lib" 会把依赖放到 Amulet/lib/ 下，
       # 这与 0.10.44 的扁平结构不同，要完全一致需改 spec 或降 PyInstaller 版本。
       run: |
@@ -104,12 +116,16 @@ jobs:
       uses: actions/upload-artifact@v6
       with:
         name: Amulet-v$BUILD_VERSION-${{ runner.os }}-${{ matrix.cfg.architecture }}
-        path: installer/dist/Amulet-*.zip
+        path: |
+          installer/dist/Amulet-*.zip
+          installer/dist/Amulet-*.exe
 
     - name: Publish to GitHub Release
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ env.RELEASE_TAG }}
-        name: Amulet ${{ env.BUILD_VERSION }} (${{ matrix.cfg.architecture }})
+        name: Amulet ${{ env.BUILD_VERSION }}
         prerelease: ${{ env.IS_RELEASE == 'false' }}
-        files: installer/dist/Amulet-*.zip
+        files: |
+          installer/dist/Amulet-*.zip
+          installer/dist/Amulet-*.exe
