@@ -78,16 +78,29 @@ jobs:
       run: |
         python -m PyInstaller -y --distpath ./installer/dist installer/Amulet.spec
 
-    - name: Windows - Install NSIS (portable)
-      # 直接下载 NSIS 便携版并显式记录 makensis 路径，避免 install-nsis action 在 windows-2025 上未加入 PATH 的问题。
+    - name: Windows - Install NSIS (portable) + MultiUser plugin
+      # windows.nsi 依赖第三方 MultiUser 插件，标准 NSIS 便携版不包含，需额外下载放到 Include/Plugins 目录。
       shell: pwsh
       run: |
         $ProgressPreference = 'SilentlyContinue'
-        Invoke-WebRequest -Uri "https://sourceforge.net/projects/nsis/files/NSIS%203/3.11/nsis-3.11.zip/download" -OutFile nsis.zip
-        Expand-Archive -Path nsis.zip -DestinationPath nsis_extract -Force
-        $nsis = (Get-ChildItem nsis_extract -Recurse -Filter makensis.exe | Select-Object -First 1).FullName
-        echo "NSIS_BIN=$nsis" >> "$env:GITHUB_ENV"
-        Remove-Item nsis.zip, nsis_extract -Recurse -Force
+        $ErrorActionPreference = 'Stop'
+        $nsisDir = "$env:RUNNER_TEMP\nsis"
+        New-Item -ItemType Directory -Force -Path $nsisDir | Out-Null
+        # 1) 下载 NSIS 便携版
+        Invoke-WebRequest -Uri "https://sourceforge.net/projects/nsis/files/NSIS%203/3.11/nsis-3.11.zip/download" -MaximumRedirection 10 -OutFile "$nsisDir\nsis.zip"
+        Expand-Archive -Path "$nsisDir\nsis.zip" -DestinationPath "$nsisDir" -Force
+        # 2) 下载 MultiUser 插件并放到对应目录
+        Invoke-WebRequest -Uri "https://nsis.sourceforge.io/mediawiki/images/6/6e/MultiUser.zip" -MaximumRedirection 10 -OutFile "$nsisDir\multiuser.zip"
+        Expand-Archive -Path "$nsisDir\multiuser.zip" -DestinationPath "$nsisDir\multiuser" -Force
+        $root = (Get-ChildItem $nsisDir -Directory | Where-Object { $_.Name -like 'nsis-*' } | Select-Object -First 1).FullName
+        Copy-Item -Path "$nsisDir\multiuser\MultiUser.nsh" -Destination "$root\Include\MultiUser.nsh" -Force
+        Copy-Item -Path "$nsisDir\multiuser\x86-unicode\MultiUser.dll" -Destination "$root\Plugins\x86-unicode\MultiUser.dll" -Force
+        # 3) 记录 makensis 路径供下一步使用
+        $makensis = "$root\makensis.exe"
+        if (-not (Test-Path $makensis)) { throw "makensis.exe not found at $makensis" }
+        echo "NSIS_BIN=$makensis" >> "$env:GITHUB_ENV"
+        echo "NSIS_ROOT=$root" >> "$env:GITHUB_ENV"
+        echo "Found makensis: $makensis"
 
     - name: Windows - Build NSIS installer
       # 安装版 exe：makensis 从 installer/ 目录执行，输入 dist/amulet/，输出 dist/Amulet-<version>-Windows-<arch>.exe
@@ -95,8 +108,12 @@ jobs:
       run: |
         cd installer
         & "$env:NSIS_BIN" /DVERSION="${{ env.BUILD_VERSION }}" /DARCH="${{ matrix.cfg.architecture }}" windows.nsi
+        if ($LASTEXITCODE -ne 0) { throw "makensis failed with exit code $LASTEXITCODE" }
         cd ..
-        Move-Item "installer/dist/Amulet-${{ env.BUILD_VERSION }}-Windows-${{ matrix.cfg.architecture }}.exe" "installer/dist/Amulet-v${{ env.BUILD_VERSION }}-Windows-${{ matrix.cfg.architecture }}-installer.exe"
+        $src = "installer/dist/Amulet-${{ env.BUILD_VERSION }}-Windows-${{ matrix.cfg.architecture }}.exe"
+        $dst = "installer/dist/Amulet-v${{ env.BUILD_VERSION }}-Windows-${{ matrix.cfg.architecture }}-installer.exe"
+        if (-not (Test-Path $src)) { throw "Installer exe not found at $src" }
+        Move-Item $src $dst -Force
 
     - name: Package portable build (zip)
       # 免安装版 zip：zip 根目录为 Amulet/ 文件夹，与 0.10.44 外层结构一致。
