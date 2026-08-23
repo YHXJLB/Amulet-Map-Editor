@@ -150,6 +150,9 @@ jobs:
         rm -rf installer/dist/deb
 
     - name: Publish to PyPi
+      # 仅在配置了 PyPI 凭据时才上传；fork 未配置凭据时跳过，避免 403 导致整个作业失败、
+      # 进而阻断后续「发布到 GitHub Release」步骤（.deb 无法上传）。
+      if: ${{ secrets.PYPI_USERNAME != '' }}
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.AMULET_MAP_EDITOR_PYPI_PASSWORD }}
