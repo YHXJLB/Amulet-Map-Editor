@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   build:
@@ -34,13 +35,27 @@ jobs:
           echo "IS_RELEASE=false" >> "$GITHUB_ENV"
         fi
 
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Build Docker image
       run: |
         docker build \
           . \
           --file Dockerfile \
           --tag amulet-editor:latest \
+          --tag ghcr.io/${{ github.repository_owner | lower }}/amulet-editor:${{ env.RELEASE_TAG }} \
+          --tag ghcr.io/${{ github.repository_owner | lower }}/amulet-editor:latest \
           --build-arg AMULET_VERSION=CUSTOM:git+https://github.com/${{ github.repository }}.git@${{ env.RELEASE_TAG }}
+
+    - name: Push Docker image to GHCR
+      run: |
+        docker push ghcr.io/${{ github.repository_owner | lower }}/amulet-editor:${{ env.RELEASE_TAG }}
+        docker push ghcr.io/${{ github.repository_owner | lower }}/amulet-editor:latest
 
     - name: Save and compress Docker image
       run: |

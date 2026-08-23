@@ -33,15 +33,18 @@ jobs:
     - name: Compute version & release target
       run: |
         if [ "${{ github.event_name }}" = "release" ]; then
-          echo "RELEASE_TAG=${{ github.event.release.tag_name }}" >> "$GITHUB_ENV"
-          echo "IS_RELEASE=true" >> "$GITHUB_ENV"
+          RAW="${{ github.event.release.tag_name }}"
         elif [ "${{ github.ref_type }}" = "tag" ]; then
-          echo "RELEASE_TAG=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
-          echo "IS_RELEASE=true" >> "$GITHUB_ENV"
+          RAW="${GITHUB_REF_NAME}"
         else
+          echo "BUILD_VERSION=0.10.${{ github.run_number }}" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=ci-${{ github.run_id }}" >> "$GITHUB_ENV"
           echo "IS_RELEASE=false" >> "$GITHUB_ENV"
+          exit 0
         fi
+        echo "BUILD_VERSION=${RAW#v}" >> "$GITHUB_ENV"
+        echo "RELEASE_TAG=${RAW}" >> "$GITHUB_ENV"
+        echo "IS_RELEASE=true" >> "$GITHUB_ENV"
 
     - name: Set up Python ${{ matrix.cfg.python-version }}"
       uses: actions/setup-python@v6
@@ -102,7 +105,7 @@ jobs:
         cat << EOF > installer/dist/deb/usr/share/applications/amulet_map_editor.desktop
         [Desktop Entry]
         Type=Application
-        Name=Amulet ${{ env.RELEASE_TAG }}
+        Name=Amulet ${{ env.BUILD_VERSION }}
         Comment=A Minecraft world editor and converter that supports all versions since Java 1.12 and Bedrock 1.7.
         Path=/opt/amulet_map_editor
         Exec=/opt/amulet_map_editor/amulet
@@ -122,7 +125,7 @@ jobs:
           --input-type dir \
           --output-type deb \
           --name "amulet-map-editor" \
-          --version ${{ github.event.release.tag_name }} \
+          --version ${{ env.BUILD_VERSION }} \
           --description "A Minecraft world editor and converter that supports all versions since Java 1.12 and Bedrock 1.7." \
           --url https://www.amuletmc.com \
           --maintainer "James Clare (gentlegiantJGC) <amuleteditor@gmail.com>" \
