@@ -7,6 +7,8 @@ on:
   push:
     branches:
       - 0.10
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
@@ -25,12 +27,11 @@ jobs:
       run:
         shell: bash
 
-    env:
-      BUILD_VERSION: ${{ github.event.release.tag_name || format('0.10.{0}', github.run_number) }}
-
     steps:
     - name: Clone
       uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
 
     - name: Set up Python ${{ matrix.cfg.python-version }}
       uses: actions/setup-python@v6
@@ -43,6 +44,23 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: arm64
+
+    - name: Compute version & release target
+      # 版本号以 git tag 为准（去掉前缀 v）。无 tag 的开发构建用 run_number 兜底。
+      run: |
+        if [ "${{ github.event_name }}" = "release" ]; then
+          RAW="${{ github.event.release.tag_name }}"
+        elif [ "${{ github.ref_type }}" = "tag" ]; then
+          RAW="${GITHUB_REF_NAME}"
+        else
+          echo "BUILD_VERSION=0.10.${{ github.run_number }}" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=ci-${{ github.run_id }}-${{ matrix.cfg.architecture }}" >> "$GITHUB_ENV"
+          echo "IS_RELEASE=false" >> "$GITHUB_ENV"
+          exit 0
+        fi
+        echo "BUILD_VERSION=${RAW#v}" >> "$GITHUB_ENV"
+        echo "RELEASE_TAG=${RAW}" >> "$GITHUB_ENV"
+        echo "IS_RELEASE=true" >> "$GITHUB_ENV"
 
     - name: Install dependencies
       run: |
@@ -87,10 +105,9 @@ jobs:
         path: installer/dist/Amulet-*.zip
 
     - name: Publish to GitHub Release
-      if: github.event_name != 'release'
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: ci-${{ github.run_id }}-${{ matrix.cfg.architecture }}
-        name: CI Build 0.10.${{ github.run_number }} (${{ matrix.cfg.architecture }})
-        prerelease: true
+        tag_name: ${{ env.RELEASE_TAG }}
+        name: Amulet ${{ env.BUILD_VERSION }} (${{ matrix.cfg.architecture }})
+        prerelease: ${{ env.IS_RELEASE == 'false' }}
         files: installer/dist/Amulet-*.zip
