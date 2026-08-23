@@ -6,6 +6,10 @@
 欢迎使用 Amulet 地图编辑器文档！
 =============================================
 
+.. note::
+   本文档提供多语言版本 / This documentation is also available in
+   `English <../en/index.html>`__.
+
 用户指南
 ==========
 
