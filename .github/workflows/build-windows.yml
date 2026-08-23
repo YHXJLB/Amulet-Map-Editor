@@ -78,27 +78,35 @@ jobs:
       run: |
         python -m PyInstaller -y --distpath ./installer/dist installer/Amulet.spec
 
-    - name: Windows - Install NSIS
-      uses: repolevedavaj/install-nsis@v1.2.0
-      with:
-        nsis-version: '3.11'
+    - name: Windows - Install NSIS (portable)
+      # 直接下载 NSIS 便携版并显式记录 makensis 路径，避免 install-nsis action 在 windows-2025 上未加入 PATH 的问题。
+      shell: pwsh
+      run: |
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -Uri "https://sourceforge.net/projects/nsis/files/NSIS%203/3.11/nsis-3.11.zip/download" -OutFile nsis.zip
+        Expand-Archive -Path nsis.zip -DestinationPath nsis_extract -Force
+        $nsis = (Get-ChildItem nsis_extract -Recurse -Filter makensis.exe | Select-Object -First 1).FullName
+        echo "NSIS_BIN=$nsis" >> "$env:GITHUB_ENV"
+        Remove-Item nsis.zip, nsis_extract -Recurse -Force
 
     - name: Windows - Build NSIS installer
       # 安装版 exe：makensis 从 installer/ 目录执行，输入 dist/amulet/，输出 dist/Amulet-<version>-Windows-<arch>.exe
+      shell: pwsh
       run: |
         cd installer
-        makensis /DVERSION="$BUILD_VERSION" /DARCH="${{ matrix.cfg.architecture }}" windows.nsi
+        & "$env:NSIS_BIN" /DVERSION="${{ env.BUILD_VERSION }}" /DARCH="${{ matrix.cfg.architecture }}" windows.nsi
         cd ..
-        mv "installer/dist/Amulet-$BUILD_VERSION-Windows-${{ matrix.cfg.architecture }}.exe" "installer/dist/Amulet-v$BUILD_VERSION-Windows-${{ matrix.cfg.architecture }}-installer.exe"
+        Move-Item "installer/dist/Amulet-${{ env.BUILD_VERSION }}-Windows-${{ matrix.cfg.architecture }}.exe" "installer/dist/Amulet-v${{ env.BUILD_VERSION }}-Windows-${{ matrix.cfg.architecture }}-installer.exe"
 
     - name: Package portable build (zip)
       # 免安装版 zip：zip 根目录为 Amulet/ 文件夹，与 0.10.44 外层结构一致。
       # PyInstaller 6.x 的 contents_directory="lib" 会把依赖放到 Amulet/lib/ 下，
       # 这与 0.10.44 的扁平结构不同，要完全一致需改 spec 或降 PyInstaller 版本。
+      shell: pwsh
       run: |
         cd installer/dist
-        mv amulet Amulet
-        powershell -Command "Compress-Archive -Path 'Amulet' -DestinationPath 'Amulet-v$BUILD_VERSION-Windows-${{ matrix.cfg.architecture }}.zip' -Force"
+        Move-Item amulet Amulet
+        Compress-Archive -Path 'Amulet' -DestinationPath "Amulet-v${{ env.BUILD_VERSION }}-Windows-${{ matrix.cfg.architecture }}.zip" -Force
         cd ../..
 
     - name: Publish to PyPi
