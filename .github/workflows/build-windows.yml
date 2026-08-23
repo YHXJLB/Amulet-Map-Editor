@@ -100,7 +100,10 @@ jobs:
       shell: pwsh
       run: |
         cd installer/dist
-        Move-Item amulet Amulet
+        # Windows 大小写不敏感 FS 下不能直接把 amulet 改名为 Amulet，先走一个临时名。
+        $tmp = [System.IO.Path]::GetRandomFileName()
+        Rename-Item -Path 'amulet' -NewName $tmp
+        Rename-Item -Path $tmp -NewName 'Amulet'
         Compress-Archive -Path 'Amulet' -DestinationPath "Amulet-v${{ env.BUILD_VERSION }}-Windows-${{ matrix.cfg.architecture }}.zip" -Force
         cd ../..
 
