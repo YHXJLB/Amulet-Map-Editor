@@ -1,83 +1,77 @@
-Getting Started
+快速上手
 ===============
 
 .. _installing-amulet-ref:
 
-Installing Amulet
+安装 Amulet
 -----------------
 
-For the purpose of this tutorial only instructions for installing Amulet
-from our pre-built/compiled builds will described, for instructions to install
-from our source code please refer to our `README`_.
+本教程仅介绍如何通过我们预构建/编译的发行版安装 Amulet。
+如需从源码安装，请参阅我们的 `README`_。
 
-You can always find our latest release on our `Github Releases`_ page. The latest
-release will always beat the top of this page. From there, there should a section
-labeled `Assets`, which should look like the following:
+您可以在我们的 `GitHub Releases`_ 页面找到最新版本，最新发布始终位于页面顶部。
+在该页面下方有一个名为 `Assets`（资产）的区域，如下所示：
 
 .. figure:: _static/images/installation_assets.png
     :scale: 75 %
     :align: center
 
-    The `Assets` section for release v0.7.0.1
+    v0.7.0.1 版本发布页面的 `Assets` 区域
 
-From there, download the appropriate .zip file for your operating system.
-After the download has completed, make sure to extract the files out of the .zip
-file into a directory. Once finished, run the appropriate executable for your operating system:
+在该区域中，下载与您操作系统对应的安装包或压缩包。
+下载完成后：
 
-* Windows: ``amulet_app.exe``
-* OSX: ``amulet_app.app``
-* Linux: *TODO*
+* Windows：运行安装程序（.exe），或解压免安装版压缩包后运行 ``amulet_app.exe``
+* macOS：解压 .zip 文件后运行 ``amulet_app.app``
+* Linux：安装 .deb 包（Debian/Ubuntu），或参考 Docker 镜像运行
 
 .. _opening-a-world-ref:
 
-Opening a World
+打开一个世界
 ---------------
 
-:emphasis:`Note: We recommend that any world that is to be opened by Amulet is backed up to
-avoid any loss of data`
+:emphasis:`注意：我们建议对任何将要被 Amulet 打开的世界提前备份，以避免数据丢失`
 
-When starting Amulet, you should be presented with a screen similar to
-the following:
+启动 Amulet 后，您将看到类似下面的界面：
 
 .. figure:: _static/images/start_screen.png
     :scale: 75 %
     :align: center
 
-    The start screen of Amulet
+    Amulet 启动界面
 
-After clicking the ``Open World`` button, you will be presented with the following pop-up dialog:
+点击 ``Open World``（打开世界）按钮后，会弹出如下对话框：
 
 .. figure:: _static/images/world_select.png
     :scale: 75 %
     :align: center
 
-    The world select pop-up dialog
+    世界选择弹窗
 
-The worlds on the right side of the dialog will be worlds that have previously been opened by Amulet
-and clicking the ``Open other world`` button will show a directory choosing dialog. Using this dialog,
-select the world directory that you wish to open and then select ``Select folder``
+对话框右侧列表显示的是之前被 Amulet 打开过的世界；点击 ``Open other world``
+（打开其他世界）按钮会弹出目录选择对话框。使用该对话框选中您要打开的世界目录，
+然后点击 ``Select folder``（选择文件夹）。
 
-Once the world has successfully been loaded by Amulet, the following be be displayed:
+世界成功加载后，将显示如下界面：
 
 .. figure:: _static/images/world_screen.png
     :scale: 75 %
     :align: center
 
-    The world screen
+    世界界面
 
-From this screen, a summary of information about the world is displayed such as the world name, the
-last version and platform of Minecraft the world was opened in, and the ending of the file path where
-the world is located.
+该界面会显示世界的概要信息，例如世界名称、该世界最后一次打开时所用的
+Minecraft 版本与平台，以及世界所在文件路径的末尾部分。
 
-On the left side there are 3 tabs, with the current being the ``About`` tab, where various sub-programs
-of Amulet can be accessed and used.
+界面左侧有 3 个标签页，当前显示的是 ``About``（关于）标签页。
+通过这些标签页可以访问并使用 Amulet 的各个子程序。
 
-As of v0.7.0.1, these tabs are:
+这些标签页为：
 
-* ``About`` - Summary of the opened world's information
-* ``Convert`` - The Amulet world converter, see the :doc:`/world_converter`
-* ``3D Editor`` - The Amulet 3D editor, see the :doc:`/world_editor`
+* ``About``（关于）—— 已打开世界的信息概要
+* ``Convert``（转换）—— Amulet 世界转换器，见 :doc:`/world_converter`
+* ``3D Editor``（3D 编辑器）—— Amulet 3D 编辑器，见 :doc:`/world_editor`
 
 
-.. _README: https://github.com/Amulet-Team/Amulet-Map-Editor#running-from-source
-.. _Github Releases: https://github.com/Amulet-Team/Amulet-Map-Editor/releases
+.. _README: https://github.com/YHXJLB/Amulet-Map-Editor/blob/0.10/README.md
+.. _Github Releases: https://github.com/YHXJLB/Amulet-Map-Editor/releases/latest

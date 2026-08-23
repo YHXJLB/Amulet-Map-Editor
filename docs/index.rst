@@ -1,13 +1,12 @@
-.. Amulet-Map-Editor documentation master file, created by
-   sphinx-quickstart on Mon Aug 17 23:27:21 2020.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. Amulet-Map-Editor 文档主文件。
+   本文件已翻译为简体中文，可按需自行调整，
+   但至少应保留根 `toctree` 指令。
 
 =============================================
-Welcome to Amulet-Map-Editor's documentation!
+欢迎使用 Amulet 地图编辑器文档！
 =============================================
 
-User Guide
+用户指南
 ==========
 
 .. toctree::
@@ -19,11 +18,11 @@ User Guide
 
 .. toctree::
    :maxdepth: 2
-   :caption: Operation Development
+   :caption: 操作开发
 
 
 
-Indices and tables
+索引与表格
 ==================
 
 * :ref:`genindex`

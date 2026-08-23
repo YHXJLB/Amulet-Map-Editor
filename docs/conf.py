@@ -22,7 +22,10 @@ copyright = "2020, The Amulet Map Editor Team"
 author = "The Amulet Map Editor Team"
 
 # The full version, including alpha/beta/rc tags
-release = "v0.7.0.1"
+release = "v0.10.62"
+
+# 文档语言（简体中文）
+language = "zh_CN"
 
 
 # -- General configuration ---------------------------------------------------
