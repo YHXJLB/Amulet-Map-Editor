@@ -150,9 +150,9 @@ jobs:
         rm -rf installer/dist/deb
 
     - name: Publish to PyPi
-      # 仅在配置了 PyPI 凭据时才上传；fork 未配置凭据时跳过，避免 403 导致整个作业失败、
-      # 进而阻断后续「发布到 GitHub Release」步骤（.deb 无法上传）。
-      if: ${{ secrets.PYPI_USERNAME != '' }}
+      # fork 未配置 PyPI 凭据时 twine 会上传失败（403），用 continue-on-error 避免拖挂整个作业、
+      # 阻断后续「发布到 GitHub Release」步骤（.deb 无法上传）。已配置凭据时正常上传。
+      continue-on-error: true
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.AMULET_MAP_EDITOR_PYPI_PASSWORD }}
