@@ -1,0 +1,142 @@
+# 存档用工作流：macOS 构建已停止自动触发。
+# 本文件仅保留历史构建步骤作为存档，不再自动运行（release / tag push / workflow_dispatch 均已关闭）。
+# 如需在未来恢复 macOS 构建，将下面 `on: []` 改为对应触发配置并补充 Apple 签名相关 secrets 即可。
+on: []
+
+name: Build macOS (archived)
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ${{ matrix.cfg.os }}
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+      matrix:
+        cfg:
+        - {os: macos-15-intel, python-version: '3.11', architecture: x64}
+        - {os: macos-15, python-version: '3.11', architecture: arm64}
+
+    steps:
+    - name: Clone
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Compute version & release target
+      run: |
+        if [ "${{ github.event_name }}" = "release" ]; then
+          echo "RELEASE_TAG=${{ env.RELEASE_TAG }}" >> "$GITHUB_ENV"
+          echo "IS_RELEASE=true" >> "$GITHUB_ENV"
+        elif [ "${{ github.ref_type }}" = "tag" ]; then
+          echo "RELEASE_TAG=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          echo "IS_RELEASE=true" >> "$GITHUB_ENV"
+        else
+          echo "RELEASE_TAG=ci-${{ github.run_id }}" >> "$GITHUB_ENV"
+          echo "IS_RELEASE=false" >> "$GITHUB_ENV"
+        fi
+
+    - name: Set up Python ${{ matrix.cfg.python-version }}"
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.cfg.python-version }}
+
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@v2
+
+    - name: Install dependencies
+      run: |
+        pip install twine pyinstaller~=6.18 build
+
+    - name: Setup
+      run: |
+        export BDISTWHEELFREEZELIBS=true
+        python -m build
+        python -m pip install dist/amulet_map_editor-*.whl --upgrade
+
+    - name: MacOS - Store Credentials
+      run: |
+        xcrun notarytool store-credentials \
+          "notary-profile" \
+          --apple-id "${{ secrets.APPLE_ID }}" \
+          --team-id "${{ secrets.APPLE_TEAM_ID }}" \
+          --password "${{ secrets.APPLE_PASSWORD }}"
+
+    - name: MacOS - Import Developer ID Certificate
+      run: |
+        CERTIFICATE_PATH=$RUNNER_TEMP/developer_id.p12
+        KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+        echo -n "${{ secrets.APPLE_P12_BASE64 }}" | base64 --decode -o "$CERTIFICATE_PATH"
+
+        security create-keychain -p "${{ secrets.APPLE_KEYCHAIN_PASSWORD }}" "$KEYCHAIN_PATH"
+        security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+        security unlock-keychain -p "${{ secrets.APPLE_KEYCHAIN_PASSWORD }}" "$KEYCHAIN_PATH"
+
+        security import "$CERTIFICATE_PATH" -P "${{ secrets.APPLE_P12_PASSWORD }}" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+        security set-key-partition-list -S apple-tool:,apple: -k "${{ secrets.APPLE_KEYCHAIN_PASSWORD }}" "$KEYCHAIN_PATH"
+        security list-keychain -d user -s "$KEYCHAIN_PATH"
+        security default-keychain -s "$KEYCHAIN_PATH"
+
+    - name: PyInstaller build
+      env:
+        APPLE_CODESIGN_IDENTITY: ${{ secrets.APPLE_CODESIGN_IDENTITY }}
+      run: |
+        python -m PyInstaller -y --distpath ./installer/dist installer/Amulet.spec
+
+    - name: MacOS - Create DMG
+      run: |
+        brew install create-dmg
+        mkdir -p "installer/dist/dmg"
+        ditto "installer/dist/Amulet ${{ env.RELEASE_TAG }}.app" "installer/dist/dmg/Amulet ${{ env.RELEASE_TAG }}.app"
+        codesign --verify --deep --strict "installer/dist/dmg/Amulet ${{ env.RELEASE_TAG }}.app"
+        create-dmg \
+          --volname "Amulet ${{ env.RELEASE_TAG }} installer" \
+          --volicon "installer/logo.icns" \
+          --window-pos 200 120 \
+          --window-size 600 300 \
+          --icon-size 100 \
+          --icon "Amulet ${{ env.RELEASE_TAG }}.app" 175 120 \
+          --hide-extension "Amulet ${{ env.RELEASE_TAG }}.app" \
+          --app-drop-link 425 120 \
+          "installer/dist/Amulet-${{ env.RELEASE_TAG }}-macOS-${{ matrix.cfg.architecture }}.dmg" \
+          "installer/dist/dmg"
+        rm -rf "installer/dist/Amulet ${{ env.RELEASE_TAG }}.app"
+        rm -rf installer/dist/amulet
+        rm -rf installer/dist/dmg
+
+    - name: MacOS - Notarise DMG
+      run: |
+        xcrun notarytool submit \
+          "installer/dist/Amulet-${{ env.RELEASE_TAG }}-macOS-${{ matrix.cfg.architecture }}.dmg" \
+          --keychain-profile "notary-profile" \
+          --team-id "${{ secrets.APPLE_TEAM_ID }}" \
+          --wait
+        xcrun stapler staple \
+          "installer/dist/Amulet-${{ env.RELEASE_TAG }}-macOS-${{ matrix.cfg.architecture }}.dmg"
+
+    - name: Publish to PyPi
+      env:
+        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+        TWINE_PASSWORD: ${{ secrets.AMULET_MAP_EDITOR_PYPI_PASSWORD }}
+      run: |
+        twine upload dist/amulet[_-]map[_-]editor*.tar.gz --skip-existing
+
+    - name: Upload Release Asset
+      uses: actions/upload-artifact@v6
+      with:
+        name: Amulet-${{ env.RELEASE_TAG }}-${{ runner.os }}-${{ matrix.cfg.architecture }}
+        path: ./installer/dist
+
+    - name: Publish to GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ env.RELEASE_TAG }}
+        name: Amulet ${{ env.RELEASE_TAG }}
+        prerelease: ${{ env.IS_RELEASE == 'false' }}
+        files: installer/dist/Amulet-*.dmg
