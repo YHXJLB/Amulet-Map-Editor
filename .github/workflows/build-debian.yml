@@ -46,7 +46,7 @@ jobs:
         echo "RELEASE_TAG=${RAW}" >> "$GITHUB_ENV"
         echo "IS_RELEASE=true" >> "$GITHUB_ENV"
 
-    - name: Set up Python ${{ matrix.cfg.python-version }}"
+    - name: Set up Python ${{ matrix.cfg.python-version }}
       uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.cfg.python-version }}
@@ -89,7 +89,8 @@ jobs:
 
     - name: Linux - Package
       run: |
-        sudo apt-get install ruby
+        sudo apt-get update
+        sudo apt-get install -y ruby ruby-dev
         sudo gem install fpm
         
         # Copy app
