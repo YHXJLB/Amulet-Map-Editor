@@ -42,20 +42,24 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Set image name (lowercase owner)
+      run: |
+        echo "IMAGE=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/amulet-editor" >> "$GITHUB_ENV"
+
     - name: Build Docker image
       run: |
         docker build \
           . \
           --file Dockerfile \
           --tag amulet-editor:latest \
-          --tag ghcr.io/${{ github.repository_owner | lower }}/amulet-editor:${{ env.RELEASE_TAG }} \
-          --tag ghcr.io/${{ github.repository_owner | lower }}/amulet-editor:latest \
+          --tag $IMAGE:${{ env.RELEASE_TAG }} \
+          --tag $IMAGE:latest \
           --build-arg AMULET_VERSION=CUSTOM:git+https://github.com/${{ github.repository }}.git@${{ env.RELEASE_TAG }}
 
     - name: Push Docker image to GHCR
       run: |
-        docker push ghcr.io/${{ github.repository_owner | lower }}/amulet-editor:${{ env.RELEASE_TAG }}
-        docker push ghcr.io/${{ github.repository_owner | lower }}/amulet-editor:latest
+        docker push $IMAGE:${{ env.RELEASE_TAG }}
+        docker push $IMAGE:latest
 
     - name: Save and compress Docker image
       run: |
