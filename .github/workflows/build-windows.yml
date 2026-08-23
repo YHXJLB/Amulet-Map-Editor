@@ -53,7 +53,7 @@ jobs:
       run: |
         $env:BDISTWHEELFREEZELIBS = "true"
         python -m build
-        
+
     - name: Install Wheels
       run: |
         python -m pip install dist/amulet_map_editor-*.whl --upgrade
@@ -62,35 +62,12 @@ jobs:
       run: |
         python -m PyInstaller -y --distpath ./installer/dist installer/Amulet.spec
 
-    - name: Windows - Install NSIS
-      uses: repolevedavaj/install-nsis@v1.2.0
-      with:
-        nsis-version: '3.11'
-
-    - name: Windows - Sign and Create Installer
-      env:
-        KEY_VAULT_URL: ${{ secrets.KEY_VAULT_URL }}
-        KEY_VAULT_CERTIFICATE: ${{ secrets.KEY_VAULT_CERTIFICATE }}
-        KEY_VAULT_CLIENT_ID: ${{ secrets.KEY_VAULT_CLIENT_ID }}
-        KEY_VAULT_SECRET: ${{ secrets.KEY_VAULT_SECRET }}
-        KEY_VAULT_TENANT: ${{ secrets.KEY_VAULT_TENANT }}
+    - name: Package portable build (zip)
+      # 与官方 0.10.44 产物结构一致：PyInstaller 单文件夹包 -> 压缩为 Amulet-v<版本>-Windows-<arch>.zip
       run: |
-        curl -L -o azuresigntool.exe https://github.com/vcsjones/AzureSignTool/releases/download/v7.0.1/AzureSignTool-${{ matrix.cfg.architecture }}.exe
-        if [ -n "$KEY_VAULT_URL" ]; then
-          find ./installer/dist/amulet -type f \( -name "*.exe" -o -name "*.dll" -o -name "*.pyd" \) -exec ./azuresigntool.exe sign -kvu "$KEY_VAULT_URL" -kvc "$KEY_VAULT_CERTIFICATE" -kvi "$KEY_VAULT_CLIENT_ID" -kvs "$KEY_VAULT_SECRET" -kvt "$KEY_VAULT_TENANT" -tr http://timestamp.digicert.com -v "{}" \;
-        else
-          echo "No signing secrets configured. Skipping code signing."
-        fi
-        makensis -DVERSION=$BUILD_VERSION -DARCH=${{ matrix.cfg.architecture }} installer/windows.nsi
-        if [ -n "$KEY_VAULT_URL" ]; then
-          ./azuresigntool.exe sign -kvu "$KEY_VAULT_URL" -kvc "$KEY_VAULT_CERTIFICATE" -kvi "$KEY_VAULT_CLIENT_ID" -kvs "$KEY_VAULT_SECRET" -kvt "$KEY_VAULT_TENANT" -tr http://timestamp.digicert.com -v "./installer/dist/Amulet-$BUILD_VERSION-Windows-${{ matrix.cfg.architecture }}.exe"
-        fi
-        # 收拢安装器到 installer/dist（NSIS 的 OutFile 在不同环境可能落在仓库根 dist/ 或 installer/dist/）
-        mkdir -p installer/dist
-        cp -f "dist/Amulet-$BUILD_VERSION-Windows-${{ matrix.cfg.architecture }}.exe" "installer/dist/" 2>/dev/null || true
-        cp -f "installer/dist/Amulet-$BUILD_VERSION-Windows-${{ matrix.cfg.architecture }}.exe" "installer/dist/" 2>/dev/null || true
-        # 清理 PyInstaller 临时目录（安装器已内联这些文件），保留安装器 exe
-        rm -rf installer/dist/amulet
+        cd installer/dist
+        powershell -Command "Compress-Archive -Path 'amulet\*' -DestinationPath 'Amulet-v$BUILD_VERSION-Windows-${{ matrix.cfg.architecture }}.zip' -Force"
+        cd ../..
 
     - name: Publish to PyPi
       env:
@@ -106,8 +83,8 @@ jobs:
     - name: Upload Release Asset
       uses: actions/upload-artifact@v6
       with:
-        name: Amulet-$BUILD_VERSION-${{ runner.os }}-${{ matrix.cfg.architecture }}
-        path: ./installer/dist
+        name: Amulet-v$BUILD_VERSION-${{ runner.os }}-${{ matrix.cfg.architecture }}
+        path: installer/dist/Amulet-*.zip
 
     - name: Publish to GitHub Release
       if: github.event_name != 'release'
@@ -116,4 +93,4 @@ jobs:
         tag_name: ci-${{ github.run_id }}-${{ matrix.cfg.architecture }}
         name: CI Build 0.10.${{ github.run_number }} (${{ matrix.cfg.architecture }})
         prerelease: true
-        files: installer/dist/Amulet-*.exe
+        files: installer/dist/Amulet-*.zip
