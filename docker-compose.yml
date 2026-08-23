@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  amulet-editor:
+    image: ghcr.io/yhxjlb/amulet-editor:latest
+    container_name: amulet-editor
+    environment:
+      - DISPLAY=${DISPLAY}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ./worlds:/app/worlds
+    devices:
+      - /dev/dri:/dev/dri
+    network_mode: host
+    command: python3.11 -m amulet_map_editor
