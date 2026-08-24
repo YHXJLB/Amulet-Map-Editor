@@ -92,3 +92,12 @@ docker-compose up
 - **Releases**: [GitHub Releases](https://github.com/YHXJLB/Amulet-Map-Editor/releases)
 - **Dokumentation**: [amulet-map-editor.readthedocs.io](https://ame-doc.yhxjlb.com/)
 - **Upstream**: [Amulet-Team/Amulet-Map-Editor](https://github.com/Amulet-Team/Amulet-Map-Editor)
+
+## 免责声明
+
+本版本为社区构建，仅供个人学习使用，**严禁商用**。如有能力请获取官方授权：<https://www.amuletmc.com/>
+
+- 上游官方仓库：<https://github.com/Amulet-Team/Amulet-Map-Editor>
+- 官方最后支持版本：`0.10.44`；本仓库自 `0.10.62` 起由 **@YHXJLB（逍遥星河）** 提供有限支持。
+- 如遇问题**请勿向上游官方仓库提交 Issue**，请直接在本仓库提交，或私信维护者。
+- 完整免责声明与联系方式见文档页：<https://ame-doc.yhxjlb.com/disclaimer.html>

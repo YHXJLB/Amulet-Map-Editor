@@ -11,6 +11,8 @@
 ![Stylecheck](https://github.com/YHXJLB/Amulet-Map-Editor/actions/workflows/stylecheck.yml/badge.svg)
 [![Docs](https://github.com/YHXJLB/Amulet-Map-Editor/actions/workflows/docs-pages.yml/badge.svg)](https://ame-doc.yhxjlb.com/)
 
+> ⚠️ **免责声明**：本版本为社区构建，仅供个人学习使用，**严禁商用**。如有能力请获取官方授权。详见 [免责声明](https://ame-doc.yhxjlb.com/disclaimer.html)。
+
 Amulet 是一款支持 Java 版 1.12+ 与 Bedrock 版 1.7+ 全版本的 Minecraft 世界编辑器与转换器。
 
 ![cover](resource/img/cover.jpg)
