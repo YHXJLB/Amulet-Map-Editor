@@ -9,6 +9,7 @@ const navZh = [
       { text: "3D 编辑器", link: "/world-editor.html" },
     ],
   },
+  { text: "免责声明", link: "/disclaimer.html" },
   { text: "下载", link: "https://github.com/YHXJLB/Amulet-Map-Editor/releases/latest" },
 ];
 
@@ -21,6 +22,7 @@ const navEn = [
       { text: "World Editor", link: "/en/world-editor.html" },
     ],
   },
+  { text: "Disclaimer", link: "/en/disclaimer.html" },
   { text: "Download", link: "https://github.com/YHXJLB/Amulet-Map-Editor/releases/latest" },
 ];
 
@@ -33,6 +35,12 @@ const sidebarZh = [
       { text: "3D 编辑器", link: "/world-editor.html" },
     ],
   },
+  {
+    text: "其他",
+    items: [
+      { text: "免责声明", link: "/disclaimer.html" },
+    ],
+  },
 ];
 
 const sidebarEn = [
@@ -42,6 +50,12 @@ const sidebarEn = [
       { text: "Getting Started", link: "/en/getting-started.html" },
       { text: "World Converter", link: "/en/world-converter.html" },
       { text: "World Editor", link: "/en/world-editor.html" },
+    ],
+  },
+  {
+    text: "Other",
+    items: [
+      { text: "Disclaimer", link: "/en/disclaimer.html" },
     ],
   },
 ];

@@ -13,6 +13,9 @@ hero:
       text: Getting Started
       link: /en/getting-started.html
     - theme: alt
+      text: Disclaimer
+      link: /en/disclaimer.html
+    - theme: alt
       text: GitHub
       link: https://github.com/YHXJLB/Amulet-Map-Editor
 

@@ -13,6 +13,9 @@ hero:
       text: 快速上手
       link: /getting-started.html
     - theme: alt
+      text: 免责声明
+      link: /disclaimer.html
+    - theme: alt
       text: GitHub
       link: https://github.com/YHXJLB/Amulet-Map-Editor
 
