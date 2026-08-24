@@ -6,12 +6,12 @@ hero:
   text: Map Editor
   tagline: A powerful Minecraft world editor and cross-version format converter
   image:
-    src: /logo.svg
+    src: /logo.png
     alt: Amulet
   actions:
     - theme: brand
       text: Getting Started
-      link: /en/getting-started
+      link: /en/getting-started.html
     - theme: alt
       text: GitHub
       link: https://github.com/YHXJLB/Amulet-Map-Editor

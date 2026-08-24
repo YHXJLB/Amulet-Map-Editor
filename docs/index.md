@@ -6,12 +6,12 @@ hero:
   text: 地图编辑器
   tagline: 强大的 Minecraft 世界编辑与跨版本格式转换工具
   image:
-    src: /logo.svg
+    src: /logo.png
     alt: Amulet
   actions:
     - theme: brand
       text: 快速上手
-      link: /getting-started
+      link: /getting-started.html
     - theme: alt
       text: GitHub
       link: https://github.com/YHXJLB/Amulet-Map-Editor

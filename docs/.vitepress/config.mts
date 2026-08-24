@@ -49,6 +49,10 @@ const sidebarEn = [
 export default defineConfig({
   cleanUrls: false,
 
+  head: [
+    ["link", { rel: "icon", href: "/favicon.ico" }],
+  ],
+
   locales: {
     root: {
       label: "简体中文",
@@ -74,7 +78,7 @@ export default defineConfig({
   },
 
   themeConfig: {
-    logo: "/logo.svg",
+    logo: "/logo.png",
     siteTitle: "Amulet 文档",
     lastUpdated: true,
     docFooter: { prev: "上一页", next: "下一页" },
