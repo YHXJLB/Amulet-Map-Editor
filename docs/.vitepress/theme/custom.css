@@ -1,0 +1,38 @@
+/* Amulet 文档主题 —— 参照 AListGo/docs 观感（品牌色 #70c6be，内容宽 1080px） */
+
+:root {
+  /* 品牌主色：青绿 */
+  --vp-c-brand-1: #70c6be;
+  --vp-c-brand-2: #5cbcb2;
+  --vp-c-brand-3: #4aa299;
+  --vp-c-brand-soft: rgba(112, 198, 190, 0.16);
+
+  /* 整体布局宽度（对照 Alist 内容宽 1080px） */
+  --vp-layout-max-width: 1200px;
+
+  /* 首页 hero 标题渐变 */
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #70c6be 30%, #3eaf7c);
+}
+
+.dark {
+  --vp-c-brand-1: #7fd6cd;
+  --vp-c-brand-2: #70c6be;
+  --vp-c-brand-3: #5cbcb2;
+  --vp-c-brand-soft: rgba(127, 214, 205, 0.16);
+}
+
+/* 文章内图片圆角与阴影，更精致 */
+.vp-doc img {
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(16, 24, 40, 0.12);
+}
+
+.dark .vp-doc img {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* 让代码块与提示框更柔和 */
+.vp-doc .custom-block {
+  border-radius: 8px;
+}

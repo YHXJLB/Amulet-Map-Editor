@@ -108,3 +108,10 @@ venv.bak/
 /resource_packs
 /plugins
 /config
+
+# VitePress
+node_modules/
+.vitepress/cache/
+
+# VitePress 编译缓存
+*.timestamp-*.mjs

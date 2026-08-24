@@ -20,31 +20,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: "3.11"
+          node-version: "22"
 
-      - name: Install Sphinx dependencies
-        run: |
-          pip install "Sphinx>=7.0" sphinx_rtd_theme
+      - name: Install dependencies
+        run: npm install
 
-      - name: Build Chinese documentation
-        run: |
-          sphinx-build -b html docs docs/_build/site/zh_CN
+      - name: Build documentation
+        run: npm run build
 
-      - name: Build English documentation
+      - name: Add CNAME and .nojekyll for custom domain
         run: |
-          sphinx-build -b html docs_en docs/_build/site/en
-
-      - name: Assemble site root (language chooser + CNAME + .nojekyll)
-        run: |
-          cp pages-root/index.html docs/_build/site/index.html
-          cp CNAME docs/_build/site/CNAME
-          touch docs/_build/site/.nojekyll
+          cp CNAME docs/.vitepress/dist/CNAME
+          touch docs/.vitepress/dist/.nojekyll
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/_build/site
+          path: docs/.vitepress/dist
 
   deploy:
     needs: build
