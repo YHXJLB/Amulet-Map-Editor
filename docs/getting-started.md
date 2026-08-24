@@ -39,5 +39,5 @@
 界面左侧有 3 个标签页，当前显示的是 `About`（关于）标签页。通过这些标签页可以访问并使用 Amulet 的各个子程序：
 
 - `About`（关于）—— 已打开世界的信息概要
-- `Convert`（转换）—— Amulet 世界转换器，见 [世界转换器](/world-converter)
-- `3D Editor`（3D 编辑器）—— Amulet 3D 编辑器，见 [3D 编辑器](/world-editor)
+- `Convert`（转换）—— Amulet 世界转换器，见 [世界转换器](/world-converter.html)
+- `3D Editor`（3D 编辑器）—— Amulet 3D 编辑器，见 [3D 编辑器](/world-editor.html)

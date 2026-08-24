@@ -4,9 +4,9 @@ const navZh = [
   {
     text: "指南",
     items: [
-      { text: "快速上手", link: "/getting-started" },
-      { text: "世界转换器", link: "/world-converter" },
-      { text: "3D 编辑器", link: "/world-editor" },
+      { text: "快速上手", link: "/getting-started.html" },
+      { text: "世界转换器", link: "/world-converter.html" },
+      { text: "3D 编辑器", link: "/world-editor.html" },
     ],
   },
   { text: "下载", link: "https://github.com/YHXJLB/Amulet-Map-Editor/releases/latest" },
@@ -16,9 +16,9 @@ const navEn = [
   {
     text: "Guide",
     items: [
-      { text: "Getting Started", link: "/en/getting-started" },
-      { text: "World Converter", link: "/en/world-converter" },
-      { text: "World Editor", link: "/en/world-editor" },
+      { text: "Getting Started", link: "/en/getting-started.html" },
+      { text: "World Converter", link: "/en/world-converter.html" },
+      { text: "World Editor", link: "/en/world-editor.html" },
     ],
   },
   { text: "Download", link: "https://github.com/YHXJLB/Amulet-Map-Editor/releases/latest" },
@@ -28,9 +28,9 @@ const sidebarZh = [
   {
     text: "用户指南",
     items: [
-      { text: "快速上手", link: "/getting-started" },
-      { text: "世界转换器", link: "/world-converter" },
-      { text: "3D 编辑器", link: "/world-editor" },
+      { text: "快速上手", link: "/getting-started.html" },
+      { text: "世界转换器", link: "/world-converter.html" },
+      { text: "3D 编辑器", link: "/world-editor.html" },
     ],
   },
 ];
@@ -39,14 +39,16 @@ const sidebarEn = [
   {
     text: "User Guide",
     items: [
-      { text: "Getting Started", link: "/en/getting-started" },
-      { text: "World Converter", link: "/en/world-converter" },
-      { text: "World Editor", link: "/en/world-editor" },
+      { text: "Getting Started", link: "/en/getting-started.html" },
+      { text: "World Converter", link: "/en/world-converter.html" },
+      { text: "World Editor", link: "/en/world-editor.html" },
     ],
   },
 ];
 
 export default defineConfig({
+  cleanUrls: false,
+
   locales: {
     root: {
       label: "简体中文",

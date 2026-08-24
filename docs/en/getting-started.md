@@ -39,5 +39,5 @@ From this screen, a summary of information about the world is displayed, such as
 On the left side there are 3 tabs, with the current one being the `About` tab, where various sub-programs of Amulet can be accessed and used:
 
 - `About` - Summary of the opened world's information
-- `Convert` - The Amulet world converter, see [World Converter](/en/world-converter)
-- `3D Editor` - The Amulet 3D editor, see [World Editor](/en/world-editor)
+- `Convert` - The Amulet world converter, see [World Converter](/en/world-converter.html)
+- `3D Editor` - The Amulet 3D editor, see [World Editor](/en/world-editor.html)
