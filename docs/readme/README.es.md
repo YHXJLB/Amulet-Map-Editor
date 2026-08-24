@@ -9,13 +9,13 @@
 ![Build Flatpak](https://github.com/YHXJLB/Amulet-Map-Editor/actions/workflows/build-flatpak.yml/badge.svg)
 ![Unittests](https://github.com/YHXJLB/Amulet-Map-Editor/actions/workflows/unittests.yml/badge.svg)
 ![Stylecheck](https://github.com/YHXJLB/Amulet-Map-Editor/actions/workflows/stylecheck.yml/badge.svg)
-[![Estado de la documentación](https://readthedocs.org/projects/amulet-map-editor/badge)](https://amulet-map-editor.readthedocs.io)
+[![Estado de la documentación](https://github.com/YHXJLB/Amulet-Map-Editor/actions/workflows/docs-pages.yml/badge.svg)](https://ame-doc.yhxjlb.com/)
 
 Un editor y conversor de mundos Minecraft compatible con todas las versiones desde Java 1.12 y Bedrock 1.7.
 
 ![cover](../../resource/img/cover.jpg)
 
-> Para guías de usuario completas, tutoriales del conversor de mundos y del editor 3D, visita la documentación oficial: [amulet-map-editor.readthedocs.io](https://amulet-map-editor.readthedocs.io)
+> Para guías de usuario completas, tutoriales del conversor de mundos y del editor 3D, visita la documentación oficial: [amulet-map-editor.readthedocs.io](https://ame-doc.yhxjlb.com/)
 
 ## Resumen de funciones
 
@@ -90,5 +90,5 @@ docker-compose up
 ## Enlaces
 
 - **Lanzamientos**: [GitHub Releases](https://github.com/YHXJLB/Amulet-Map-Editor/releases)
-- **Documentación**: [amulet-map-editor.readthedocs.io](https://amulet-map-editor.readthedocs.io)
+- **Documentación**: [amulet-map-editor.readthedocs.io](https://ame-doc.yhxjlb.com/)
 - **Repositorio ascendente**: [Amulet-Team/Amulet-Map-Editor](https://github.com/Amulet-Team/Amulet-Map-Editor)

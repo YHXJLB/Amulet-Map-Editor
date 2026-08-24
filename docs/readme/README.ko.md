@@ -9,13 +9,13 @@
 ![Build Flatpak](https://github.com/YHXJLB/Amulet-Map-Editor/actions/workflows/build-flatpak.yml/badge.svg)
 ![Unittests](https://github.com/YHXJLB/Amulet-Map-Editor/actions/workflows/unittests.yml/badge.svg)
 ![Stylecheck](https://github.com/YHXJLB/Amulet-Map-Editor/actions/workflows/stylecheck.yml/badge.svg)
-[![문서 상태](https://readthedocs.org/projects/amulet-map-editor/badge)](https://amulet-map-editor.readthedocs.io)
+[![문서 상태](https://github.com/YHXJLB/Amulet-Map-Editor/actions/workflows/docs-pages.yml/badge.svg)](https://ame-doc.yhxjlb.com/)
 
 Java 1.12 및 Bedrock 1.7 이후 모든 버전을 지원하는 Minecraft 월드 편집기 및 변환기입니다.
 
 ![cover](../../resource/img/cover.jpg)
 
-> 자세한 사용자 가이드, 월드 변환 튜토리얼 및 3D 편집기 튜토리얼은 공식 문서를 참조하세요: [amulet-map-editor.readthedocs.io](https://amulet-map-editor.readthedocs.io)
+> 자세한 사용자 가이드, 월드 변환 튜토리얼 및 3D 편집기 튜토리얼은 공식 문서를 참조하세요: [amulet-map-editor.readthedocs.io](https://ame-doc.yhxjlb.com/)
 
 ## 기능 개요
 
@@ -90,5 +90,5 @@ docker-compose up
 ## 링크
 
 - **릴리스 페이지**: [GitHub Releases](https://github.com/YHXJLB/Amulet-Map-Editor/releases)
-- **공식 문서**: [amulet-map-editor.readthedocs.io](https://amulet-map-editor.readthedocs.io)
+- **공식 문서**: [amulet-map-editor.readthedocs.io](https://ame-doc.yhxjlb.com/)
 - **상위 저장소**: [Amulet-Team/Amulet-Map-Editor](https://github.com/Amulet-Team/Amulet-Map-Editor)

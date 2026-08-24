@@ -9,13 +9,13 @@
 ![Build Flatpak](https://github.com/YHXJLB/Amulet-Map-Editor/actions/workflows/build-flatpak.yml/badge.svg)
 ![Unittests](https://github.com/YHXJLB/Amulet-Map-Editor/actions/workflows/unittests.yml/badge.svg)
 ![Stylecheck](https://github.com/YHXJLB/Amulet-Map-Editor/actions/workflows/stylecheck.yml/badge.svg)
-[![文件狀態](https://readthedocs.org/projects/amulet-map-editor/badge)](https://amulet-map-editor.readthedocs.io)
+[![文件狀態](https://github.com/YHXJLB/Amulet-Map-Editor/actions/workflows/docs-pages.yml/badge.svg)](https://ame-doc.yhxjlb.com/)
 
 支援 Java 1.12 及 Bedrock 1.7 以來所有版本的 Minecraft 世界編輯器與轉換器。
 
 ![cover](../../resource/img/cover.jpg)
 
-> 更詳細的使用者指南、世界轉換教學與 3D 編輯器教學，請參閱官方文件：[amulet-map-editor.readthedocs.io](https://amulet-map-editor.readthedocs.io)
+> 更詳細的使用者指南、世界轉換教學與 3D 編輯器教學，請參閱官方文件：[amulet-map-editor.readthedocs.io](https://ame-doc.yhxjlb.com/)
 
 ## 功能概覽
 
@@ -90,5 +90,5 @@ docker-compose up
 ## 連結
 
 - **發布頁**：[GitHub Releases](https://github.com/YHXJLB/Amulet-Map-Editor/releases)
-- **官方文件**：[amulet-map-editor.readthedocs.io](https://amulet-map-editor.readthedocs.io)
+- **官方文件**：[amulet-map-editor.readthedocs.io](https://ame-doc.yhxjlb.com/)
 - **上游倉庫**：[Amulet-Team/Amulet-Map-Editor](https://github.com/Amulet-Team/Amulet-Map-Editor)

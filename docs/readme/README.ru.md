@@ -9,13 +9,13 @@
 ![Build Flatpak](https://github.com/YHXJLB/Amulet-Map-Editor/actions/workflows/build-flatpak.yml/badge.svg)
 ![Unittests](https://github.com/YHXJLB/Amulet-Map-Editor/actions/workflows/unittests.yml/badge.svg)
 ![Stylecheck](https://github.com/YHXJLB/Amulet-Map-Editor/actions/workflows/stylecheck.yml/badge.svg)
-[![Статус документации](https://readthedocs.org/projects/amulet-map-editor/badge)](https://amulet-map-editor.readthedocs.io)
+[![Статус документации](https://github.com/YHXJLB/Amulet-Map-Editor/actions/workflows/docs-pages.yml/badge.svg)](https://ame-doc.yhxjlb.com/)
 
 Редактор и конвертер миров Minecraft, поддерживающий все версии, начиная с Java 1.12 и Bedrock 1.7.
 
 ![cover](../../resource/img/cover.jpg)
 
-> Подробные руководства пользователя, уроки по конвертеру миров и 3D-редактору см. в официальной документации: [amulet-map-editor.readthedocs.io](https://amulet-map-editor.readthedocs.io)
+> Подробные руководства пользователя, уроки по конвертеру миров и 3D-редактору см. в официальной документации: [amulet-map-editor.readthedocs.io](https://ame-doc.yhxjlb.com/)
 
 ## Обзор возможностей
 
@@ -90,5 +90,5 @@ docker-compose up
 ## Ссылки
 
 - **Страница релизов**: [GitHub Releases](https://github.com/YHXJLB/Amulet-Map-Editor/releases)
-- **Официальная документация**: [amulet-map-editor.readthedocs.io](https://amulet-map-editor.readthedocs.io)
+- **Официальная документация**: [amulet-map-editor.readthedocs.io](https://ame-doc.yhxjlb.com/)
 - **Исходный репозиторий**: [Amulet-Team/Amulet-Map-Editor](https://github.com/Amulet-Team/Amulet-Map-Editor)
