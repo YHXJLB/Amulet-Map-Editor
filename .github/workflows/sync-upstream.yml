@@ -1,10 +1,11 @@
 name: Sync Upstream & Build
 
 # 自动把上游 Amulet-Team/Amulet-Map-Editor 的 0.10 分支合并进本 fork，
-# 并在检测到上游发布新版本（如 0.10.64）时，用该版本号触发本 fork 原有的
-# 4 个构建工作流（build-windows / build-debian / build-flatpak / build-docker）。
+# 并在检测到上游发布新版本（如 0.10.64）时，用该版本号（带 v 前缀，如 v0.10.64）
+# 触发本 fork 原有的 4 个构建工作流（build-windows / build-debian / build-flatpak / build-docker）。
 # 4 个构建工作流各自通过 softprops/action-gh-release 把产物上传到同名 release，
-# overwrite:true 会把 4 份产物聚合到同一个 “Amulet <version>” release 下。
+# overwrite:true 会把 4 份产物聚合到同一个 “Amulet v<version>” release 下。
+# 全部构建完成后，本工作流再生成一份「版本说明」写入 release 正文，并作为 说明.md 附件上传。
 
 on:
   schedule:
@@ -26,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.detect.outputs.version }}
+      tag: ${{ steps.detect.outputs.tag }}
       do_build: ${{ steps.detect.outputs.do_build }}
     steps:
       - name: Checkout fork 0.10
@@ -49,7 +51,7 @@ jobs:
         id: merge
         run: |
           BEFORE=$(git rev-parse HEAD)
-          # -X ours：冲突时保留本 fork 的改动（你领先的 36+ 个提交、改造过的构建工作流等），
+          # -X ours：冲突时保留本 fork 的改动（你领先的提交、改造过的构建工作流等），
           # 上游的非冲突改动照常合入。
           git merge upstream/0.10 --no-edit -X ours || { echo "::error::合并失败"; exit 1; }
           AFTER=$(git rev-parse HEAD)
@@ -70,21 +72,23 @@ jobs:
         run: |
           VER=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
             https://api.github.com/repos/Amulet-Team/Amulet-Map-Editor/releases/latest \
-            | python -c 'import sys,json; print(json.load(sys.stdin).get("tag_name",""))')
+            | python3 -c 'import sys,json; print(json.load(sys.stdin).get("tag_name",""))')
           echo "version=$VER" >> "$GITHUB_OUTPUT"
+          TAG="v$VER"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           if [ -z "$VER" ]; then
             echo "do_build=false" >> "$GITHUB_OUTPUT"
             echo "未获取到上游版本号，跳过构建"
             exit 0
           fi
           CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $GH_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$VER")
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG")
           if [ "$CODE" = "200" ]; then
             echo "do_build=false" >> "$GITHUB_OUTPUT"
-            echo "fork 已发布 $VER，跳过构建"
+            echo "fork 已发布 $TAG，跳过构建"
           else
             echo "do_build=true" >> "$GITHUB_OUTPUT"
-            echo "上游新版本 $VER，将触发构建"
+            echo "上游新版本 $TAG，将触发构建"
           fi
 
   build:
@@ -103,21 +107,215 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VER="${{ needs.sync.outputs.version }}"
-          git tag -f "$VER" HEAD
-          git push -f origin "refs/tags/$VER"
+          TAG="${{ needs.sync.outputs.tag }}"
+          git tag -f "$TAG" HEAD
+          git push -f origin "refs/tags/$TAG"
 
       - name: Trigger 4 build workflows with version
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VER="${{ needs.sync.outputs.version }}"
+          TAG="${{ needs.sync.outputs.tag }}"
           for wf in build-windows build-debian build-flatpak build-docker; do
-            echo "dispatch $wf @ $VER"
+            echo "dispatch $wf @ $TAG"
             curl -s -X POST \
               -H "Authorization: Bearer $GH_TOKEN" \
               -H "Accept: application/vnd.github+json" \
               -H "X-GitHub-Api-Version: 2022-11-28" \
-              -d "{\"ref\":\"0.10\",\"inputs\":{\"version\":\"$VER\"}}" \
+              -d "{\"ref\":\"0.10\",\"inputs\":{\"version\":\"$TAG\"}}" \
               "https://api.github.com/repos/${{ github.repository }}/actions/workflows/$wf.yml/dispatches"
           done
+
+  notes:
+    needs: build
+    if: needs.sync.outputs.do_build == 'true' || github.event.inputs.force_build == 'true'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ needs.sync.outputs.tag }}
+    steps:
+      - name: Wait for 4 builds then generate release notes
+        run: |
+          TAG="${{ needs.sync.outputs.tag }}"
+          GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          REPO="${{ github.repository }}"
+          # 只关注本批（build 作业之后）派发、运行在 0.10 分支上的 workflow_dispatch 运行
+          T0=$(date -u -d '3 minutes ago' +%Y-%m-%dT%H:%M:%SZ)
+          for i in $(seq 1 50); do
+            DONE=true
+            for wf in build-windows build-debian build-flatpak build-docker; do
+              concl=$(curl -s -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/$REPO/actions/workflows/$wf.yml/runs?per_page=5&event=workflow_dispatch&created:%3E=$T0" \
+                | python3 -c "
+          import sys,json
+          runs=[r for r in json.load(sys.stdin).get('workflow_runs',[]) if r.get('head_branch')=='0.10']
+          print(runs[0].get('conclusion') or 'pending' if runs else 'pending')
+          ")
+              if [ "$concl" != "success" ] && [ "$concl" != "failure" ]; then DONE=false; fi
+            done
+            if [ "$DONE" = "true" ]; then echo "all builds finished"; break; fi
+            echo "waiting for builds... ($i)"
+            sleep 30
+          done
+
+          python3 - <<'PY'
+          import os, json, urllib.request, urllib.error, urllib.parse, datetime
+
+          TOKEN = os.environ['GH_TOKEN']
+          REPO = os.environ['GITHUB_REPOSITORY']
+          TAG = os.environ['TAG']
+          API = "https://api.github.com"
+          HDR = {"Authorization": "Bearer " + TOKEN, "Accept": "application/vnd.github+json",
+                 "X-GitHub-Api-Version": "2022-11-28"}
+          OWNER_L = REPO.split('/')[0].lower()
+
+          def api(method, path, data=None):
+              body = json.dumps(data).encode() if data is not None else None
+              req = urllib.request.Request(API + path, data=body, method=method, headers=HDR)
+              try:
+                  r = urllib.request.urlopen(req)
+                  return r.status, json.loads(r.read() or b'{}')
+              except urllib.error.HTTPError as e:
+                  return e.code, json.loads(e.read() or b'{}')
+
+          # 0.10 分支当前 HEAD（说明里展示的“对应提交”）
+          st, branch = api("GET", f"/repos/{REPO}/branches/0.10")
+          SHA = branch.get("commit", {}).get("sha", "")[:7]
+
+          # 取 release
+          st, rel = api("GET", f"/repos/{REPO}/releases/tags/{TAG}")
+          if st != 200:
+              print("release not found:", st, rel); raise SystemExit(1)
+          rel_id = rel["id"]
+
+          def categorize(name):
+              n = name.lower()
+              if "windows-x64" in n: return "Windows x64"
+              if "windows-arm64" in n: return "Windows arm64"
+              if n.endswith(".deb"): return "Linux x86_64 (Debian / Ubuntu 24.04)"
+              if "flatpak" in n: return "Linux x86_64 (Flatpak)"
+              if "docker" in n: return "Docker (x86_64)"
+              return "其他"
+
+          def size_str(b):
+              return f"{b/1024/1024:.1f} MB" if b >= 1024*1024 else f"{b/1024:.0f} KB"
+
+          rows = []
+          for a in rel.get("assets", []):
+              nm = a["name"]
+              if nm.startswith("Source code") or nm == "说明.md":
+                  continue
+              rows.append((nm, size_str(a["size"]), categorize(nm)))
+          rows.sort(key=lambda x: x[2])
+
+          today = datetime.datetime.utcnow().strftime("%Y-%m-%d")
+
+          notes = f"""# Amulet Map Editor {TAG} 版本说明
+
+          > 本说明由自动构建工作流（`{REPO}` 仓库 `0.10` 分支）产出，
+          > 所有安装包均通过 GitHub Actions 自动构建并发布到 `{TAG}` Release。
+
+          | 项目 | 内容 |
+          | --- | --- |
+          | 版本号 | `{TAG}` |
+          | 分支 | `0.10` |
+          | 对应提交 | `{SHA}` |
+          | 发布时间 | {today} (UTC) |
+          | 构建方式 | GitHub Actions 全平台自动构建 |
+          | 上游基线 | `Amulet-Team/Amulet-Map-Editor` `0.10` 分支 |
+
+          ## 平台支持
+
+          | 平台 | 架构 | 安装版 | 免安装版 |
+          | --- | --- | --- | --- |
+          | Windows | x64 (amd64) | ✅ `*-Windows-x64-installer.exe` | ✅ `*-Windows-x64.zip` |
+          | Windows | arm64 | ✅ `*-Windows-arm64-installer.exe` | ✅ `*-Windows-arm64.zip` |
+          | Linux | x86_64 | ✅ `*-Linux-x86_64.deb` | — (Flatpak 见下) |
+          | Linux | x86_64 (Flatpak) | ✅ `*-flatpak-x64.flatpak` | — |
+          | Docker | x86_64 | ✅ `*-docker.tar.gz` + `ghcr.io/{OWNER_L}/amulet-editor` | — |
+
+          > macOS 构建已按需求停止，本版本不含 macOS 包。
+
+          ## 下载清单（{TAG} Release 资产）
+
+          | 文件名 | 大小 | 类型 | 适用平台 |
+          | --- | --- | --- | --- |
+          """
+          for nm, sz, cat in rows:
+              notes += f"| `{nm}` | {sz} | 安装包 | {cat} |\n"
+
+          notes += f"""
+          下载根地址：
+
+          ```
+          https://github.com/{REPO}/releases/tag/{TAG}
+          ```
+
+          ## 安装与运行
+
+          ### Windows
+
+          - **安装版**：双击 `*-Windows-x64-installer.exe`（或 arm64），按向导完成安装，开始菜单生成快捷方式。
+          - **免安装版**：解压 `*-Windows-*.zip` 到任意目录，运行其中的 `amulet.exe` 即可。
+
+          ### Linux (Debian / Ubuntu 24.04)
+
+          ```
+          sudo apt install ./{TAG}-Linux-x86_64.deb
+          amulet-map-editor
+          ```
+
+          > `.deb` 运行时依赖 `libgtk-3-0`、`libwayland-client0`、`libxkbcommon0` 等桌面库，
+          > 已在包元数据中声明，使用 `apt` 安装时会自动解析。
+
+          ### Linux (Flatpak)
+
+          ```
+          flatpak install ./{TAG}-flatpak-x64.flatpak
+          ```
+
+          ### Docker
+
+          ```
+          # 方式一：加载本地 tar 包
+          docker load -i {TAG}-docker.tar.gz
+
+          # 方式二：直接拉取已推送的镜像（需 GitHub 登录 ghcr.io）
+          docker pull ghcr.io/{OWNER_L}/amulet-editor:{TAG}
+          docker run -it --rm ghcr.io/{OWNER_L}/amulet-editor:{TAG}
+          ```
+
+          ## 构建说明
+
+          - 构建由 GitHub Actions 工作流驱动，工作流文件位于 `.github/workflows/`，由 `sync-upstream.yml` 统一调度：
+            - `build-windows.yml` —— Windows x64 / arm64（NSIS 安装版 + PyInstaller 免安装 zip）
+            - `build-debian.yml` —— Linux `.deb`
+            - `build-flatpak.yml` —— Linux Flatpak 包
+            - `build-docker.yml` —— Docker 镜像（`ghcr.io/{OWNER_L}/amulet-editor`，标签 `{TAG}` 与 `latest`）
+
+          ## 已知事项
+
+          - 本版本为 `0.10` 线的维护构建，版本号对齐上游最新发布 `{TAG}`。
+          """
+
+          # 写回 release 正文，并把标题统一为 “Amulet v<x.y.z>”
+          api("PATCH", f"/repos/{REPO}/releases/{rel_id}", {"body": notes, "name": f"Amulet {TAG}"})
+
+          # 上传 说明.md（若已存在先删除，便于重复运行）
+          for a in rel.get("assets", []):
+              if a["name"] == "说明.md":
+                  api("DELETE", f"/repos/{REPO}/releases/assets/{a['id']}")
+          req = urllib.request.Request(
+              f"{API}/repos/{REPO}/releases/{rel_id}/assets?name={urllib.parse.quote('说明.md')}",
+              data=notes.encode("utf-8"), method="POST",
+              headers={"Authorization": "Bearer " + TOKEN,
+                        "Content-Type": "text/markdown; charset=utf-8",
+                        "X-GitHub-Api-Version": "2022-11-28"})
+          try:
+              urllib.request.urlopen(req)
+              print("uploaded 说明.md")
+          except urllib.error.HTTPError as e:
+              print("upload 说明.md err", e.code, e.read()[:200])
+
+          print("notes updated for", TAG)
+          PY
