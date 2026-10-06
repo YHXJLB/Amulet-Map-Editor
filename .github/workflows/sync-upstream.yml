@@ -57,7 +57,9 @@ jobs:
       - name: Add upstream remote & fetch
         run: |
           git remote add upstream https://github.com/Amulet-Team/Amulet-Map-Editor.git
-          git fetch upstream 0.10 --tags
+          # 只取分支，不取 tag：fork 本地已有同名 release tag（如 0.10.62），
+          # 取 tag 会因 "would clobber existing tag" 导致 fetch 失败。
+          git fetch upstream 0.10 --no-tags
 
       - name: Merge upstream/0.10 into fork
         id: merge
