@@ -66,8 +66,10 @@ jobs:
 
     - name: Build Wheels
       shell: pwsh
+      env:
+        BDISTWHEELFREEZELIBS: 'true'
+        CFLAGS: ${{ matrix.cfg.os == 'windows-11-arm' && '-D__builtin_isnan=isnan -D__builtin_isinf=isinf -D__builtin_isfinite=isfinite' || '' }}
       run: |
-        $env:BDISTWHEELFREEZELIBS = "true"
         python -m build
 
     - name: Install Wheels

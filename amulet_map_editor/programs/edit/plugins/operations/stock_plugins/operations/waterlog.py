@@ -28,8 +28,9 @@ import numpy
 import wx
 
 from amulet_map_editor.api.wx.ui.base_select import EVT_PICK
-from amulet_map_editor.api.wx.ui.simple import SimpleDialog
+from amulet_map_editor.api.wx.ui.simple import SimpleDialog, SimpleScrollablePanel
 from amulet_map_editor.api.wx.ui.block_select import BlockDefine
+from amulet_map_editor.api.wx.ui.image_widget import ImageButton
 from amulet_map_editor.programs.edit.api.operations import DefaultOperationUI
 from amulet_map_editor.api import image
 
@@ -69,8 +70,8 @@ class Waterlog(wx.Panel, DefaultOperationUI):
         top_sizer = wx.BoxSizer(wx.HORIZONTAL)
         self._sizer.Add(top_sizer, 0, wx.EXPAND | wx.ALL, 5)
 
-        help_button = wx.BitmapButton(
-            self, bitmap=image.icon.tablericons.help.bitmap(22, 22)
+        help_button = ImageButton(
+            self, image.icon.tablericons.help.image(), wx.Size(22, 22)
         )
         top_sizer.Add(help_button)
 
@@ -109,21 +110,22 @@ class Waterlog(wx.Panel, DefaultOperationUI):
         )
         self._mode_description.Fit()
 
+        self._scroll = SimpleScrollablePanel(self)
+        self._sizer.Add(self._scroll, 1, wx.EXPAND | wx.TOP, 5)
+
         self._block_define = BlockDefine(
-            self,
+            self._scroll,
             world.level_wrapper.translation_manager,
             wx.VERTICAL,
             *(options.get("fill_block_options", []) or [world.level_wrapper.platform]),
             show_pick_block=True,
         )
         self._block_define.Bind(EVT_PICK, self._on_pick_block_button)
-        self._sizer.Add(self._block_define, 1, wx.ALL | wx.ALIGN_CENTRE_HORIZONTAL, 5)
+        self._scroll.sizer.Add(self._block_define, 1, wx.LEFT | wx.RIGHT | wx.EXPAND, 5)
 
         self._run_button = wx.Button(self, label="Run Operation")
         self._run_button.Bind(wx.EVT_BUTTON, self._run_operation)
-        self._sizer.Add(
-            self._run_button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 5
-        )
+        self._sizer.Add(self._run_button, 0, wx.ALL | wx.EXPAND, 5)
 
         self.Layout()
         self.Thaw()
