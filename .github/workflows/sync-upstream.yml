@@ -1,19 +1,19 @@
-# 自动同步上游并触发构建
-# 存放路径（推送时）：仓库根目录下的 .github/workflows/sync-upstream.yml
+# 自动同步上游并触发构建（编排器，不做任何编译）
+# 存放路径：仓库根目录下的 .github/workflows/sync-upstream.yml
 #
-# 作用：
-#   1. 定时（默认每天 UTC 03:23）从上游 Amulet-Team/Amulet-Map-Editor 的 0.10 分支
-#      合并最新提交到本 fork 的 0.10 分支；
-#   2. 一旦产生新提交，自动通过 workflow_dispatch 触发 4 个 build 工作流
-#      （build-windows / build-debian / build-flatpak / build-docker），
-#      它们会各自生成一个 ci-* 预发布并上传多平台安装包。
+# 它只做两件事：
+#   1. 定时（默认每天 UTC 03:23）把上游 Amulet-Team/Amulet-Map-Editor 的 0.10 分支
+#      合并进本 fork 的 0.10 分支（冲突时保留 fork 自己的改动）；
+#   2. 一旦产生新提交，就通过 workflow_dispatch 去“按按钮”调用仓库里原有的
+#      build-windows / build-debian / build-flatpak / build-docker 四个构建工作流。
+#      构建逻辑全部留在那四个文件里，本文件不重复实现任何构建步骤。
 #
-# 凭据说明：
-#   - 默认使用 GITHUB_TOKEN 即可（需本工作流 permissions 含 contents:write 与 actions:write）。
-#   - 若 0.10 分支受保护（分支保护规则禁止 GITHUB_TOKEN 推送），
-#     请在仓库 Settings → Secrets → Actions 中新增一个名为 SYNC_TOKEN 的
-#     Personal Access Token（需 repo 与 workflow 权限，且账号对仓库有写权限/可绕过保护）。
-#     本工作流会优先使用 SYNC_TOKEN，未配置时自动回退 GITHUB_TOKEN。
+# 为什么需要这个新文件：
+#   - GitHub 没有内置的“定时自动同步上游”能力；
+#   - 原有 4 个构建工作流的 on: 只有 release / tag / 手动，分支被同步更新后不会自己跑；
+#   - 工作流无法从外部改另一个工作流的触发条件，只能靠 workflow_dispatch 调用。
+#
+# 注意：分支名 0.10 必须写成带引号的字符串，否则 YAML 会把它解析成数字 0.1。
 
 name: Sync Upstream & Build
 
@@ -36,16 +36,21 @@ permissions:
   contents: write
   actions: write
 
+env:
+  BRANCH: '0.10'
+  UPSTREAM: 'https://github.com/Amulet-Team/Amulet-Map-Editor.git'
+
 jobs:
   sync:
     runs-on: ubuntu-latest
     outputs:
       updated: ${{ steps.merge.outputs.updated }}
     steps:
-      - name: Checkout fork (0.10)
+      # ref 必须加引号：0.10 会被 YAML 当数字解析成 0.1
+      - name: Checkout fork (${{ env.BRANCH }})
         uses: actions/checkout@v6
         with:
-          ref: 0.10
+          ref: ${{ env.BRANCH }}
           token: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
@@ -55,40 +60,52 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Add upstream remote & fetch
+        id: fetch
         run: |
-          git remote add upstream https://github.com/Amulet-Team/Amulet-Map-Editor.git
-          # 只取分支，不取 tag：fork 本地已有同名 release tag（如 0.10.62），
-          # 取 tag 会因 "would clobber existing tag" 导致 fetch 失败。
-          git fetch upstream 0.10 --no-tags
+          git remote add upstream "$UPSTREAM"
+          # --no-tags：fork 里已有同名 release tag（如 0.10.62），
+          # 取 tag 会因 "would clobber existing tag" 直接报错。
+          git fetch upstream "$BRANCH" --no-tags
+          echo "behind=$(git rev-list --count HEAD..upstream/$BRANCH)" >> "$GITHUB_OUTPUT"
 
-      - name: Merge upstream/0.10 into fork
+      - name: Report sync state
+        run: |
+          echo "### 同步检查" >> "$GITHUB_STEP_SUMMARY"
+          echo "- fork HEAD: \`$(git rev-parse --short HEAD)\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- upstream HEAD: \`$(git rev-parse --short upstream/$BRANCH)\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 待合入的上游提交数: **${{ steps.fetch.outputs.behind }}**" >> "$GITHUB_STEP_SUMMARY"
+
+      # 合并策略：冲突时保留 fork 自身改动（-X ours）。
+      # 本 fork 领先上游数十个提交、并改过 4 个构建工作流，
+      # 因此绝不能“以上游为准”，否则会冲掉你的自定义构建逻辑。
+      - name: Merge upstream into fork
         id: merge
         run: |
-          git checkout 0.10
           BEFORE=$(git rev-parse HEAD)
-          # 合并上游：普通冲突以 -X theirs 解决
-          if git merge upstream/0.10 --no-edit -X theirs; then
-            :
+          if git merge --no-edit -X ours "upstream/$BRANCH"; then
+            echo "合并完成（无冲突或冲突已按 fork 版本解决）"
           else
-            # 仍存在的冲突（如双方新增/重命名）一律采用“上游”版本后提交，
-            # 保证 fork 始终跟随上游，无需人工干预。
-            git checkout --theirs $(git diff --name-only --diff-filter=U) 2>/dev/null || true
+            # 少数特殊冲突（双方新增/重命名等）兜底：一律保留 fork 侧内容
+            git checkout --ours -- . 2>/dev/null || true
             git add -A
-            git commit --no-edit -m "Merge upstream/0.10 (resolve conflicts, prefer upstream)" \
-              || { echo "::error::合并冲突无法自动解决，已跳过本次同步"; echo "updated=false" >> "$GITHUB_OUTPUT"; exit 1; }
+            git commit --no-edit -m "Merge upstream $BRANCH (冲突按 fork 版本保留)" \
+              || { echo "::error::合并无法自动完成，本次跳过同步"; echo "updated=false" >> "$GITHUB_OUTPUT"; exit 0; }
           fi
           AFTER=$(git rev-parse HEAD)
           if [ "$BEFORE" != "$AFTER" ]; then
             echo "updated=true" >> "$GITHUB_OUTPUT"
+            echo "- 结果: **已同步新提交** \`$BEFORE\` → \`$AFTER\`" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "updated=false" >> "$GITHUB_OUTPUT"
+            echo "- 结果: **已是最新，无需同步**" >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Push to fork default branch
+      - name: Push to fork
         if: steps.merge.outputs.updated == 'true'
-        # checkout 在 ref:0.10 下是分离 HEAD，必须用显式 refspec 推送
-        run: git push origin "HEAD:refs/heads/0.10"
+        # checkout 在 ref 下是分离 HEAD，本地没有同名分支，必须显式 refspec
+        run: git push origin "HEAD:refs/heads/$BRANCH"
 
+  # 调用仓库里原有的四个构建工作流（由它们自己产出 ci-* 预发布安装包）
   build:
     needs: sync
     if: needs.sync.outputs.updated == 'true' || inputs.force_build
@@ -105,4 +122,6 @@ jobs:
       - name: Trigger ${{ matrix.workflow }}
         env:
           GH_TOKEN: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
-        run: gh workflow run ${{ matrix.workflow }}.yml --repo ${{ github.repository }}
+        run: |
+          gh workflow run ${{ matrix.workflow }}.yml --repo ${{ github.repository }} --ref "$BRANCH"
+          echo "已触发 ${{ matrix.workflow }}.yml"
