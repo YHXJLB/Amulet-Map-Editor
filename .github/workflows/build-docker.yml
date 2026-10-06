@@ -4,6 +4,10 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, e.g. 0.10.64. Leave empty for a dev build.'
+        required: false
   push:
     tags:
       - 'v*'
@@ -23,8 +27,12 @@ jobs:
         fetch-depth: 0
 
     - name: Compute version & release target
+      # 版本号优先取手动传入的 version 输入；否则以 release/tag 为准；都没有则开发构建用 run_id 兜底。
       run: |
-        if [ "${{ github.event_name }}" = "release" ]; then
+        if [ -n "${{ inputs.version }}" ]; then
+          echo "RELEASE_TAG=${{ inputs.version }}" >> "$GITHUB_ENV"
+          echo "IS_RELEASE=true" >> "$GITHUB_ENV"
+        elif [ "${{ github.event_name }}" = "release" ]; then
           echo "RELEASE_TAG=${{ github.event.release.tag_name }}" >> "$GITHUB_ENV"
           echo "IS_RELEASE=true" >> "$GITHUB_ENV"
         elif [ "${{ github.ref_type }}" = "tag" ]; then
