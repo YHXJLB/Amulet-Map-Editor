@@ -1,0 +1,103 @@
+# 自动同步上游并触发构建
+# 存放路径（推送时）：仓库根目录下的 .github/workflows/sync-upstream.yml
+#
+# 作用：
+#   1. 定时（默认每天 UTC 03:23）从上游 Amulet-Team/Amulet-Map-Editor 的 0.10 分支
+#      合并最新提交到本 fork 的 0.10 分支；
+#   2. 一旦产生新提交，自动通过 workflow_dispatch 触发 4 个 build 工作流
+#      （build-windows / build-debian / build-flatpak / build-docker），
+#      它们会各自生成一个 ci-* 预发布并上传多平台安装包。
+#
+# 凭据说明：
+#   - 默认使用 GITHUB_TOKEN 即可（需本工作流 permissions 含 contents:write 与 actions:write）。
+#   - 若 0.10 分支受保护（分支保护规则禁止 GITHUB_TOKEN 推送），
+#     请在仓库 Settings → Secrets → Actions 中新增一个名为 SYNC_TOKEN 的
+#     Personal Access Token（需 repo 与 workflow 权限，且账号对仓库有写权限/可绕过保护）。
+#     本工作流会优先使用 SYNC_TOKEN，未配置时自动回退 GITHUB_TOKEN。
+
+name: Sync Upstream & Build
+
+on:
+  schedule:
+    - cron: '23 3 * * *'          # 每天 UTC 03:23 自动同步一次
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: '即使上游无新提交也强制触发构建'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    outputs:
+      updated: ${{ steps.merge.outputs.updated }}
+    steps:
+      - name: Checkout fork (0.10)
+        uses: actions/checkout@v6
+        with:
+          ref: 0.10
+          token: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote & fetch
+        run: |
+          git remote add upstream https://github.com/Amulet-Team/Amulet-Map-Editor.git
+          git fetch upstream 0.10 --tags
+
+      - name: Merge upstream/0.10 into fork
+        id: merge
+        run: |
+          BEFORE=$(git rev-parse HEAD)
+          # -X theirs：冲突时以“上游”版本为准，保证 fork 始终跟随上游。
+          # 若你希望保留 fork 自身的本地改动，请改为普通 merge 或 rebase。
+          if git merge upstream/0.10 --no-edit -X theirs; then
+            :
+          else
+            echo "::error::合并冲突，已中止本次同步"
+            git merge --abort || true
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          AFTER=$(git rev-parse HEAD)
+          if [ "$BEFORE" != "$AFTER" ]; then
+            echo "updated=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push to fork default branch
+        if: steps.merge.outputs.updated == 'true'
+        run: git push origin 0.10
+
+  build:
+    needs: sync
+    if: needs.sync.outputs.updated == 'true' || inputs.force_build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workflow:
+          - build-windows
+          - build-debian
+          - build-flatpak
+          - build-docker
+    steps:
+      - name: Trigger ${{ matrix.workflow }}
+        env:
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+        run: gh workflow run ${{ matrix.workflow }}.yml --repo ${{ github.repository }}
