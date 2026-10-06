@@ -64,16 +64,18 @@ jobs:
       - name: Merge upstream/0.10 into fork
         id: merge
         run: |
+          git checkout 0.10
           BEFORE=$(git rev-parse HEAD)
-          # -X theirs：冲突时以“上游”版本为准，保证 fork 始终跟随上游。
-          # 若你希望保留 fork 自身的本地改动，请改为普通 merge 或 rebase。
+          # 合并上游：普通冲突以 -X theirs 解决
           if git merge upstream/0.10 --no-edit -X theirs; then
             :
           else
-            echo "::error::合并冲突，已中止本次同步"
-            git merge --abort || true
-            echo "updated=false" >> "$GITHUB_OUTPUT"
-            exit 1
+            # 仍存在的冲突（如双方新增/重命名）一律采用“上游”版本后提交，
+            # 保证 fork 始终跟随上游，无需人工干预。
+            git checkout --theirs $(git diff --name-only --diff-filter=U) 2>/dev/null || true
+            git add -A
+            git commit --no-edit -m "Merge upstream/0.10 (resolve conflicts, prefer upstream)" \
+              || { echo "::error::合并冲突无法自动解决，已跳过本次同步"; echo "updated=false" >> "$GITHUB_OUTPUT"; exit 1; }
           fi
           AFTER=$(git rev-parse HEAD)
           if [ "$BEFORE" != "$AFTER" ]; then
@@ -84,7 +86,8 @@ jobs:
 
       - name: Push to fork default branch
         if: steps.merge.outputs.updated == 'true'
-        run: git push origin 0.10
+        # checkout 在 ref:0.10 下是分离 HEAD，必须用显式 refspec 推送
+        run: git push origin "HEAD:refs/heads/0.10"
 
   build:
     needs: sync
